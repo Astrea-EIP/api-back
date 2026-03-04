@@ -18,12 +18,13 @@ public class AuthController : ControllerBase
     /// Get an anonymous access token.
     /// </summary>
     [HttpGet("anonymous")]
-    [ProducesResponseType(typeof(string), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(proto_back.DTOs.Responses.TokenResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(Shared.Errors.ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Shared.Errors.ServerErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult GetAnonymousToken()
     {
         var token = _authService.GenerateAnonymousToken();
-        return Accepted(token);
+        var response = new proto_back.DTOs.Responses.TokenResponse { AccessToken = token };
+        return Accepted(response);
     }
 }

@@ -26,7 +26,9 @@ public class ItineraryController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ServerErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult PostItinerary([FromBody] CreateItineraryRequest request)
+    public IActionResult PostItinerary(
+        [FromHeader(Name = "access-token")] string accessToken, 
+        [FromBody] CreateItineraryRequest request)
     {
         var result = _itineraryService.ComputeItinerary(request);
         return StatusCode(StatusCodes.Status201Created, result);
