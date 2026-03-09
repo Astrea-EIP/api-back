@@ -1,38 +1,84 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using Microsoft.Extensions.Configuration;
 using proto_back.DTOs.Requests;
 using proto_back.DTOs.Responses;
 using proto_back.Interfaces.IServices;
+using AstreaEngineLib = AstreaEngine.AstreaEngine;
 
 namespace proto_back.Services;
 
-/// <summary>
-/// Mock itinerary service returning a hardcoded Lille → Nantes route.
-/// Will be replaced by the real itinerary engine integration later.
-/// </summary>
 public class ItineraryService : IItineraryService
 {
-    // Hardcoded polyline: Lille (50.6292, 3.0573) → Nantes (47.2184, -1.5536)
-    // Intermediate waypoints approximate a road route via Paris region
-    private static readonly List<PointResponse> LilleToNantesRoute = new()
+    private readonly IConfiguration _configuration;
+
+    public ItineraryService(IConfiguration configuration)
     {
-        new PointResponse { Lat = 50.6292, Lng = 3.0573 },   // Lille
-        new PointResponse { Lat = 50.2910, Lng = 2.7775 },   // Arras
-        new PointResponse { Lat = 49.8941, Lng = 2.2958 },   // Amiens
-        new PointResponse { Lat = 49.4432, Lng = 2.0731 },   // Beauvais
-        new PointResponse { Lat = 48.8566, Lng = 2.3522 },   // Paris
-        new PointResponse { Lat = 48.4469, Lng = 1.4892 },   // Chartres
-        new PointResponse { Lat = 47.9029, Lng = 1.9039 },   // Orléans
-        new PointResponse { Lat = 47.3941, Lng = 0.6848 },   // Tours
-        new PointResponse { Lat = 47.2781, Lng = -0.5536 },  // Angers
-        new PointResponse { Lat = 47.2184, Lng = -1.5536 },  // Nantes
-    };
+        _configuration = configuration;
+    }
 
     public ItineraryResponse ComputeItinerary(CreateItineraryRequest request)
     {
-        // Mock: always returns the hardcoded Lille → Nantes route
-        // regardless of request parameters (start, end, inclination, stair)
+        string? graphHopperUrl = _configuration["GraphHopper:BaseUrl"];
+        if (string.IsNullOrEmpty(graphHopperUrl))
+        {
+            throw new InvalidOperationException("GraphHopper:BaseUrl is not configured.");
+        }
+
+        var startPoint = ParseCoordinate(request.Start);
+        var endPoint = ParseCoordinate(request.End);
+
+        var points = new List<AstreaEngine.PointResponse> { startPoint, endPoint };
+
+        string profileName = request.MobilityProfile switch
+        {
+            MobilityProfile.Pedestrian => "foot",
+            MobilityProfile.Wheelchair => "wheelchair",
+            MobilityProfile.Crutches => "crutches",
+            MobilityProfile.Blind => "blind",
+            _ => "foot"
+        };
+
+        string userJson = $"{{\"profile\":\"{profileName}\"}}";
+
+        var astreaRouteResult = AstreaEngineLib.AstreaRoute(graphHopperUrl, points, userJson);
+
+        var responsePoints = new List<proto_back.DTOs.Responses.PointResponse>();
+        foreach (var p in astreaRouteResult)
+        {
+            responsePoints.Add(new proto_back.DTOs.Responses.PointResponse
+            {
+                Lat = p.Lat,
+                Lng = p.Lng
+            });
+        }
+
         return new ItineraryResponse
         {
-            Points = LilleToNantesRoute
+            Points = responsePoints
+        };
+    }
+
+    private AstreaEngine.PointResponse ParseCoordinate(string coordinate)
+    {
+        if (string.IsNullOrWhiteSpace(coordinate))
+        {
+            throw new ArgumentException("Invalid coordinate format. Expected 'lat,lng' (e.g. '47.2184,-1.5536').");
+        }
+
+        var parts = coordinate.Split(',');
+        if (parts.Length != 2 || 
+            !double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double lat) ||
+            !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double lng))
+        {
+            throw new ArgumentException("Invalid coordinate format. Expected 'lat,lng' (e.g. '47.2184,-1.5536').");
+        }
+
+        return new AstreaEngine.PointResponse
+        {
+            Lat = lat,
+            Lng = lng
         };
     }
 }
