@@ -32,6 +32,11 @@
                         "application/json": {
                             "schema": {
                                 "type": "object",
+                                "required": [
+                                    "start",
+                                    "end",
+                                    "mobility_profile"
+                                ],
                                 "properties": {
                                     "start": {
                                         "type": "string"
@@ -39,17 +44,28 @@
                                     "end": {
                                         "type": "string"
                                     },
-                                    "inclination_max": {
+                                    "mobility_profile": {
+                                        "type": "integer",
+                                        "description": "0: Pedestrian, 1: Wheelchair, 2: Crutches, 3: Blind"
+                                    },
+                                    "wheelchair_width": {
                                         "type": "number",
                                         "exclusiveMinimum": 0,
-                                        "maximum": 90
+                                        "maximum": 2
                                     },
-                                    "stair": {
-                                        "type": "boolean",
-                                        "default": true
+                                    "physical_strength": {
+                                        "type": "integer",
+                                        "description": "0: Low, 1: Medium, 2: High"
                                     },
-                                    "": {
-                                        "type": "string"
+                                    "is_accompanied": {
+                                        "type": "boolean"
+                                    },
+                                    "can_climb_stairs": {
+                                        "type": "boolean"
+                                    },
+                                    "path_preferences": {
+                                        "type": "integer",
+                                        "description": "Flags: None=0, Stairs=1, Slopes=2, WidePathways=4, LitStreets=8, Benches=16"
                                     }
                                 }
                             }
