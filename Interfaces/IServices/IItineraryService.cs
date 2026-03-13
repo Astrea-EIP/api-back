@@ -5,5 +5,5 @@ namespace proto_back.Interfaces.IServices;
 
 public interface IItineraryService
 {
-    ItineraryResponse ComputeItinerary(CreateItineraryRequest request);
+    Task<ItineraryResponse> ComputeItineraryAsync(CreateItineraryRequest request);
 }
