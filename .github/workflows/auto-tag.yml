@@ -1,0 +1,66 @@
+name: Auto Tag
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔎 Get last tag
+        id: last_tag
+        run: |
+          git fetch --tags
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: 🔎 Get commits since last tag
+        id: commits
+        run: |
+          COMMITS=$(git log ${{ steps.last_tag.outputs.tag }}..HEAD --pretty=%B)
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 🔢 Compute next version
+        id: bump
+        run: |
+          TAG=${{ steps.last_tag.outputs.tag }}
+          COMMITS="${{ steps.commits.outputs.commits }}"
+
+          MAJOR=$(echo $TAG | cut -d. -f1 | tr -d v)
+          MINOR=$(echo $TAG | cut -d. -f2)
+          PATCH=$(echo $TAG | cut -d. -f3)
+
+          if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
+            MAJOR=$((MAJOR+1))
+            MINOR=0
+            PATCH=0
+          elif echo "$COMMITS" | grep -q "^feat"; then
+            MINOR=$((MINOR+1))
+            PATCH=0
+          elif echo "$COMMITS" | grep -q "^fix"; then
+            PATCH=$((PATCH+1))
+          else
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          NEW_TAG="v$MAJOR.$MINOR.$PATCH"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: 🏷️ Create tag
+        if: steps.bump.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git tag ${{ steps.bump.outputs.new_tag }}
+          git push origin ${{ steps.bump.outputs.new_tag }}
