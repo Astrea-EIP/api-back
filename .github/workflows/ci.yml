@@ -34,7 +34,7 @@ jobs:
         run: dotnet restore
 
       - name: 🔍 Check formatting
-        run: dotnet format proto-back.sln --verify-no-changes
+        run: dotnet format proto-back.csproj --verify-no-changes
 
       - name: 🏗️ Build backend
         run: dotnet build --configuration Release
