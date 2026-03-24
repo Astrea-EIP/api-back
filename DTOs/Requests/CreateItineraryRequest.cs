@@ -8,10 +8,10 @@ namespace proto_back.DTOs.Requests;
 /// </summary>
 public enum MobilityProfile
 {
-    Pedestrian  = 0,
-    Wheelchair  = 1,
-    Crutches    = 2,
-    Blind       = 3
+    Pedestrian = 0,
+    Wheelchair = 1,
+    Crutches = 2,
+    Blind = 3
 }
 
 /// <summary>
@@ -20,9 +20,9 @@ public enum MobilityProfile
 /// </summary>
 public enum PhysicalStrength
 {
-    Low    = 0,  // Éviter toute pente et tout trottoir surélevé
+    Low = 0,  // Éviter toute pente et tout trottoir surélevé
     Medium = 1,  // Pentes légères acceptables
-    High   = 2   // Pentes légères + trottoirs légèrement surélevés acceptables
+    High = 2   // Pentes légères + trottoirs légèrement surélevés acceptables
 }
 
 /// <summary>
@@ -31,12 +31,12 @@ public enum PhysicalStrength
 [Flags]
 public enum PathPreference
 {
-    None         = 0,
-    Stairs       = 1 << 0,  // Préfère les escaliers aux pentes
-    Slopes       = 1 << 1,  // Préfère les pentes aux escaliers
+    None = 0,
+    Stairs = 1 << 0,  // Préfère les escaliers aux pentes
+    Slopes = 1 << 1,  // Préfère les pentes aux escaliers
     WidePathways = 1 << 2,  // Préfère les chemins larges
-    LitStreets   = 1 << 3,  // Priorité aux rues éclairées
-    Benches      = 1 << 4   // Bancs obligatoires sur le trajet (âge, fatigue)
+    LitStreets = 1 << 3,  // Priorité aux rues éclairées
+    Benches = 1 << 4   // Bancs obligatoires sur le trajet (âge, fatigue)
 }
 
 public class CreateItineraryRequest

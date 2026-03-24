@@ -27,7 +27,7 @@ public class ItineraryController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ServerErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PostItinerary(
-        [FromHeader(Name = "access-token")] string accessToken, 
+        [FromHeader(Name = "access-token")] string accessToken,
         [FromBody] CreateItineraryRequest request)
     {
         var result = await _itineraryService.ComputeItineraryAsync(request);

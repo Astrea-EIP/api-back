@@ -37,7 +37,7 @@ public class ExceptionHandlingMiddleware
                 {
                     using var scope = _scopeFactory.CreateScope();
                     var repo = scope.ServiceProvider.GetRequiredService<IErrorLogRepository>();
-                    
+
                     var errorLog = new ErrorLog
                     {
                         ErrorId = errorId,
