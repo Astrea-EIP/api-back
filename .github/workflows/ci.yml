@@ -1,0 +1,46 @@
+name: CI - api-back
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 📥 Checkout engine
+        uses: actions/checkout@v4
+        with:
+          repository: Astrea-EIP/core-moteur
+          path: engine
+
+      - name: 🏗️ Build engine
+        run: |
+          cd engine/lib
+          dotnet build -c Release
+
+      - name: 📦 Restore dependencies
+        run: dotnet restore
+
+      - name: 🔍 Check formatting
+        run: dotnet format proto-back.sln --verify-no-changes
+
+      - name: 🏗️ Build backend
+        run: dotnet build --configuration Release
+
+      - name: 🧪 Run tests
+        run: dotnet test --configuration Release
+
+      - name: 📦 Publish
+        run: dotnet publish -c Release -o out
