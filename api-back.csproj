@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>proto_back</RootNamespace>
+    <DefaultItemExcludes>$(DefaultItemExcludes);engine/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +22,9 @@
 
   <ItemGroup>
     <Compile Remove="engine/**/*.cs" />
+    <None Remove="engine/**" />
+    <Content Remove="engine/**" />
+    <EmbeddedResource Remove="engine/**" />
   </ItemGroup>
 
 </Project>

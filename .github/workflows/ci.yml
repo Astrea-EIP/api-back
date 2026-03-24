@@ -27,14 +27,23 @@ jobs:
 
       - name: 🏗️ Build engine
         run: |
-          cd engine/lib
-          dotnet build -c Release
+          dotnet build engine/lib -c Release -o engine-build
+
+      - name: 📦 Copy engine DLL
+        run: |
+          mkdir -p lib
+          if [ ! -f engine-build/AstreaEngine.dll ]; then
+            echo "AstreaEngine.dll not found in engine-build"
+            ls -la engine-build || true
+            exit 1
+          fi
+          cp engine-build/AstreaEngine.dll lib/AstreaEngine.dll
 
       - name: 📦 Restore dependencies
         run: dotnet restore api-back.csproj
 
       - name: 🔍 Check formatting
-        run: dotnet format api-back.csproj --verify-no-changes --exclude engine
+        run: dotnet format api-back.csproj --verify-no-changes
 
       - name: 🏗️ Build backend
         run: dotnet build api-back.csproj --configuration Release
