@@ -19,4 +19,8 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="engine/**/*.cs" />
+  </ItemGroup>
+
 </Project>
