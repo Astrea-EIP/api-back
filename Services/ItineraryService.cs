@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using proto_back.DTOs.Requests;
 using proto_back.DTOs.Responses;
@@ -15,10 +13,12 @@ namespace proto_back.Services;
 public class ItineraryService : IItineraryService
 {
     private readonly IConfiguration _configuration;
+    private readonly IGeocodingService _geocodingService;
 
-    public ItineraryService(IConfiguration configuration)
+    public ItineraryService(IConfiguration configuration, IGeocodingService geocodingService)
     {
         _configuration = configuration;
+        _geocodingService = geocodingService;
     }
 
     public async Task<ItineraryResponse> ComputeItineraryAsync(CreateItineraryRequest request)
@@ -26,14 +26,15 @@ public class ItineraryService : IItineraryService
         string graphHopperUrl = _configuration["GraphHopper:BaseUrl"]
             ?? throw new InvalidOperationException("GraphHopper:BaseUrl is not configured.");
 
-        string nominatimUrl = _configuration["Nominatim:BaseUrl"]
-            ?? throw new InvalidOperationException("Nominatim:BaseUrl is not configured.");
-
         // Résoudre les points de départ et d'arrivée (coordonnées "lat,lng" OU nom de ville/adresse)
-        var startPoint = await ResolvePointAsync(nominatimUrl, request.Start);
-        var endPoint = await ResolvePointAsync(nominatimUrl, request.End);
+        var startPoint = await _geocodingService.ResolvePointAsync(request.Start);
+        var endPoint = await _geocodingService.ResolvePointAsync(request.End);
 
-        var points = new List<AstreaEngine.PointResponse> { startPoint, endPoint };
+        var points = new List<AstreaEngine.PointResponse>
+        {
+            new() { Lat = startPoint.Lat, Lng = startPoint.Lng },
+            new() { Lat = endPoint.Lat, Lng = endPoint.Lng }
+        };
 
         // Construire le JSON utilisateur avec tous les paramètres disponibles
         string userJson = BuildUserJson(request);
@@ -101,58 +102,4 @@ public class ItineraryService : IItineraryService
         return userObject.ToJsonString();
     }
 
-    /// <summary>
-    /// Résout un point à partir d'une chaîne de coordonnées "lat,lng"
-    /// ou d'un nom d'adresse/ville via AstreaAdressToCoordinates.
-    /// </summary>
-    private static async Task<AstreaEngine.PointResponse> ResolvePointAsync(string nominatimUrl, string input)
-    {
-        // Tenter d'abord l'interprétation comme coordonnées
-        if (TryParseCoordinate(input, out var point))
-        {
-            return point;
-        }
-
-        // Sinon, traiter comme un nom d'adresse/ville et géocoder via Nominatim
-        var results = await AstreaEngineLib.AstreaAdressToCoordinatesAsync(nominatimUrl, input, 1);
-
-        if (results.Count == 0)
-        {
-            throw new ArgumentException(
-                $"Impossible de résoudre l'adresse '{input}' en coordonnées. "
-                + "Vérifiez l'orthographe ou utilisez le format 'lat,lng'.");
-        }
-
-        // Prendre le premier résultat
-        return results.Values.First();
-    }
-
-    /// <summary>
-    /// Tente de parser une chaîne au format "lat,lng".
-    /// </summary>
-    private static bool TryParseCoordinate(string input, out AstreaEngine.PointResponse point)
-    {
-        point = new AstreaEngine.PointResponse();
-
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            return false;
-        }
-
-        var parts = input.Split(',');
-        if (parts.Length != 2)
-        {
-            return false;
-        }
-
-        if (double.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double lat) &&
-            double.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double lng))
-        {
-            point.Lat = lat;
-            point.Lng = lng;
-            return true;
-        }
-
-        return false;
-    }
 }

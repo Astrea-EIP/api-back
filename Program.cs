@@ -39,6 +39,14 @@ builder.Services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
 
 // Register application services
 builder.Services.AddSingleton<IAuthService, AuthService>();
+builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>((sp, client) =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var baseUrl = configuration["Nominatim:BaseUrl"] ?? "https://nominatim.openstreetmap.org";
+
+    client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+    client.DefaultRequestHeaders.Add("User-Agent", "api-back/1.0 (contact: backend-team)");
+});
 builder.Services.AddScoped<IItineraryService, ItineraryService>();
 
 var app = builder.Build();
