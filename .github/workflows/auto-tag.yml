@@ -46,7 +46,6 @@ jobs:
         id: bump
         run: |
           TAG="${{ steps.last_tag.outputs.tag }}"
-          COMMITS=$(cat commits.txt)
 
           if [ -z "$TAG" ]; then
             TAG="v0.0.0"
@@ -58,16 +57,16 @@ jobs:
           MINOR=$(echo $TAG | cut -d. -f2)
           PATCH=$(echo $TAG | cut -d. -f3)
 
-          if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
+          if grep -q "BREAKING CHANGE" commits.txt; then
             MAJOR=$((MAJOR+1))
             MINOR=0
             PATCH=0
 
-          elif echo "$COMMITS" | grep -q "^feat"; then
+          elif grep -q "^feat" commits.txt; then
             MINOR=$((MINOR+1))
             PATCH=0
 
-          elif echo "$COMMITS" | grep -q "^fix"; then
+          elif grep -q "^fix" commits.txt; then
             PATCH=$((PATCH+1))
 
           else
