@@ -3,12 +3,18 @@ name: Auto Tag
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: auto-tag
+  cancel-in-progress: false
+
 jobs:
   tag:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -24,28 +30,28 @@ jobs:
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      - name: 🔎 Get commits since last tag
-        id: commits
+      - name: 🔎 Get commits since last tag (safe)
         run: |
+          git fetch --tags
+
           LAST_TAG="${{ steps.last_tag.outputs.tag }}"
 
           if [ -z "$LAST_TAG" ]; then
             echo "No tags found, using full history"
-            COMMITS=$(git log --pretty=%B)
+            git log --pretty=%B > commits.txt
           else
             echo "Last tag: $LAST_TAG"
-            COMMITS=$(git log $LAST_TAG..HEAD --pretty=%B)
+            git log "${LAST_TAG}..HEAD" --pretty=%B > commits.txt
           fi
 
-          echo "commits<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          TOTAL_LINES=$(wc -l < commits.txt || echo 0)
+          echo "Commits collected (first 50 lines / $TOTAL_LINES total):"
+          head -n 50 commits.txt || true
 
       - name: 🔢 Compute next version
         id: bump
         run: |
           TAG="${{ steps.last_tag.outputs.tag }}"
-          COMMITS="${{ steps.commits.outputs.commits }}"
 
           if [ -z "$TAG" ]; then
             TAG="v0.0.0"
@@ -53,21 +59,20 @@ jobs:
 
           echo "Current tag: $TAG"
 
-          MAJOR=$(echo $TAG | cut -d. -f1 | tr -d v)
-          MINOR=$(echo $TAG | cut -d. -f2)
-          PATCH=$(echo $TAG | cut -d. -f3)
+          MAJOR=$(echo "$TAG" | cut -d. -f1 | tr -d v)
+          MINOR=$(echo "$TAG" | cut -d. -f2)
+          PATCH=$(echo "$TAG" | cut -d. -f3)
 
-          # 🔥 priorité : breaking change
-          if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
+          if grep -q "BREAKING CHANGE" commits.txt; then
             MAJOR=$((MAJOR+1))
             MINOR=0
             PATCH=0
 
-          elif echo "$COMMITS" | grep -q "^feat"; then
+          elif grep -qE "^feat(\(.+\))?:" commits.txt; then
             MINOR=$((MINOR+1))
             PATCH=0
 
-          elif echo "$COMMITS" | grep -q "^fix"; then
+          elif grep -qE "^fix(\(.+\))?:" commits.txt; then
             PATCH=$((PATCH+1))
 
           else
@@ -77,17 +82,44 @@ jobs:
           fi
 
           NEW_TAG="v$MAJOR.$MINOR.$PATCH"
+
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
           echo "New tag: $NEW_TAG"
 
       - name: 🏷️ Create tag
         if: steps.bump.outputs.skip != 'true'
         run: |
+          NEW_TAG="${{ steps.bump.outputs.new_tag }}"
+
+          echo "Checking if tag exists locally..."
+          if git show-ref --tags --verify --quiet "refs/tags/$NEW_TAG"; then
+            echo "Tag already exists locally. Skipping."
+            exit 0
+          fi
+
+          echo "Checking if tag exists on remote..."
+          if git ls-remote --tags --refs origin "refs/tags/$NEW_TAG" | grep -q .; then
+            echo "Tag already exists on remote. Skipping."
+            exit 0
+          fi
+
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
-          git tag ${{ steps.bump.outputs.new_tag }}
-          git push origin ${{ steps.bump.outputs.new_tag }}
+          echo "Creating tag $NEW_TAG"
+          git tag "$NEW_TAG"
+
+          echo "Pushing tag $NEW_TAG"
+          git push origin "$NEW_TAG" || {
+            echo "Push failed, re-checking if tag exists..."
+            if git ls-remote --tags --refs origin "refs/tags/$NEW_TAG" | grep -q .; then
+              echo "Tag was created by another concurrent run. Treating as success."
+              exit 0
+            else
+              echo "Push failed for unknown reason."
+              exit 1
+            fi
+          }
 
       - name: ℹ️ No version change
         if: steps.bump.outputs.skip == 'true'
