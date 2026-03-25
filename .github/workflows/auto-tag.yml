@@ -3,6 +3,7 @@ name: Auto Tag
 on:
   push:
     branches: [main]
+  workflow_dispatch: # permet de relancer manuellement si besoin
 
 permissions:
   contents: write
@@ -24,28 +25,28 @@ jobs:
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      - name: 🔎 Get commits since last tag
-        id: commits
+      - name: 🔎 Get commits since last tag (safe)
         run: |
+          git fetch --tags
+
           LAST_TAG="${{ steps.last_tag.outputs.tag }}"
 
           if [ -z "$LAST_TAG" ]; then
             echo "No tags found, using full history"
-            COMMITS=$(git log --pretty=%B)
+            git log --pretty=%B > commits.txt
           else
             echo "Last tag: $LAST_TAG"
-            COMMITS=$(git log $LAST_TAG..HEAD --pretty=%B)
+            git log $LAST_TAG..HEAD --pretty=%B > commits.txt
           fi
 
-          echo "commits<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "Commits collected:"
+          cat commits.txt
 
       - name: 🔢 Compute next version
         id: bump
         run: |
           TAG="${{ steps.last_tag.outputs.tag }}"
-          COMMITS="${{ steps.commits.outputs.commits }}"
+          COMMITS=$(cat commits.txt)
 
           if [ -z "$TAG" ]; then
             TAG="v0.0.0"
@@ -57,7 +58,6 @@ jobs:
           MINOR=$(echo $TAG | cut -d. -f2)
           PATCH=$(echo $TAG | cut -d. -f3)
 
-          # 🔥 priorité : breaking change
           if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
             MAJOR=$((MAJOR+1))
             MINOR=0
@@ -77,17 +77,35 @@ jobs:
           fi
 
           NEW_TAG="v$MAJOR.$MINOR.$PATCH"
+
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
           echo "New tag: $NEW_TAG"
 
       - name: 🏷️ Create tag
         if: steps.bump.outputs.skip != 'true'
         run: |
+          NEW_TAG="${{ steps.bump.outputs.new_tag }}"
+
+          echo "Checking if tag exists locally..."
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "Tag already exists locally. Skipping."
+            exit 0
+          fi
+
+          echo "Checking if tag exists on remote..."
+          if git ls-remote --tags origin | grep -q "refs/tags/$NEW_TAG"; then
+            echo "Tag already exists on remote. Skipping."
+            exit 0
+          fi
+
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
-          git tag ${{ steps.bump.outputs.new_tag }}
-          git push origin ${{ steps.bump.outputs.new_tag }}
+          echo "Creating tag $NEW_TAG"
+          git tag "$NEW_TAG"
+
+          echo "Pushing tag $NEW_TAG"
+          git push origin "$NEW_TAG"
 
       - name: ℹ️ No version change
         if: steps.bump.outputs.skip == 'true'
