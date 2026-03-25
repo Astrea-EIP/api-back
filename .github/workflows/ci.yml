@@ -1,0 +1,55 @@
+name: CI - api-back
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v6
+
+      - name: ⚙️ Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 📥 Checkout engine
+        uses: actions/checkout@v6
+        with:
+          repository: Astrea-EIP/core-moteur
+          path: engine
+
+      - name: 🏗️ Build engine
+        run: |
+          dotnet build engine/lib -c Release -o engine-build
+
+      - name: 📦 Copy engine DLL
+        run: |
+          mkdir -p lib
+          if [ ! -f engine-build/AstreaEngine.dll ]; then
+            echo "AstreaEngine.dll not found in engine-build"
+            ls -la engine-build || true
+            exit 1
+          fi
+          cp engine-build/AstreaEngine.dll lib/AstreaEngine.dll
+
+      - name: 📦 Restore dependencies
+        run: dotnet restore api-back.csproj
+
+      - name: 🔍 Check formatting
+        run: dotnet format api-back.csproj --verify-no-changes
+
+      - name: 🏗️ Build backend
+        run: dotnet build api-back.csproj --configuration Release
+
+      - name: 🧪 Run tests
+        run: dotnet test api-back.csproj --configuration Release
+
+      - name: 📦 Publish
+        run: dotnet publish -c Release -o out

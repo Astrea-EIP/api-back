@@ -1,0 +1,211 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "version": "1.0",
+        "title": "Atrea proto",
+        "summary": ""
+    },
+    "servers": [
+        {
+            "url": "http://localhost:3000",
+            "description": ""
+        }
+    ],
+    "paths": {
+        "/v0/itinerary": {
+            "post": {
+                "summary": "Your POST endpoint",
+                "operationId": "post-v0-itinerary",
+                "parameters": [
+                    {
+                        "name": "access-token",
+                        "in": "header",
+                        "description": "token de connection",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "start",
+                                    "end",
+                                    "mobility_profile"
+                                ],
+                                "properties": {
+                                    "start": {
+                                        "type": "string"
+                                    },
+                                    "end": {
+                                        "type": "string"
+                                    },
+                                    "mobility_profile": {
+                                        "type": "integer",
+                                        "description": "0: Pedestrian, 1: Wheelchair, 2: Crutches, 3: Blind"
+                                    },
+                                    "wheelchair_width": {
+                                        "type": "number",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 2
+                                    },
+                                    "physical_strength": {
+                                        "type": "integer",
+                                        "description": "0: Low, 1: Medium, 2: High"
+                                    },
+                                    "is_accompanied": {
+                                        "type": "boolean"
+                                    },
+                                    "can_climb_stairs": {
+                                        "type": "boolean"
+                                    },
+                                    "path_preferences": {
+                                        "type": "integer",
+                                        "description": "Flags: None=0, Stairs=1, Slopes=2, WidePathways=4, LitStreets=8, Benches=16"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "points": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "minProperties": 2,
+                                                "maxProperties": 2
+                                            }
+                                        },
+                                        "": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "5XX": {
+                        "description": "Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "errorId": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "http://localhost:3000",
+                        "description": ""
+                    }
+                ]
+            }
+        },
+        "/v0/auth/anonymous": {
+            "get": {
+                "summary": "Your GET endpoint",
+                "description": "get an anonymous token qui sera dans le header access-token",
+                "operationId": "get-v0-auth-anonymous",
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "accessToken": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "5XX": {
+                        "description": "Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "errorId": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "http://localhost:3000",
+                        "description": ""
+                    }
+                ]
+            }
+        }
+    }
+}
