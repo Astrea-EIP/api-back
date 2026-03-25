@@ -8,8 +8,13 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: auto-tag
+  cancel-in-progress: false
+
 jobs:
   tag:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -40,16 +45,9 @@ jobs:
           fi
 
           TOTAL_LINES=$(wc -l < commits.txt || echo 0)
-          echo "Commits collected (showing first 50 lines out of $TOTAL_LINES):"
+          echo "Commits collected (first 50 lines / $TOTAL_LINES total):"
           head -n 50 commits.txt || true
-          if [ "$TOTAL_LINES" -gt 50 ]; then
-            echo "... (output truncated; enable step debug logging to see full commits.txt) ..."
-          fi
 
-          if [ "${ACTIONS_STEP_DEBUG}" = "true" ]; then
-            echo "Full contents of commits.txt (step debug enabled):"
-            cat commits.txt
-          fi
       - name: 🔢 Compute next version
         id: bump
         run: |
@@ -61,20 +59,20 @@ jobs:
 
           echo "Current tag: $TAG"
 
-          MAJOR=$(echo $TAG | cut -d. -f1 | tr -d v)
-          MINOR=$(echo $TAG | cut -d. -f2)
-          PATCH=$(echo $TAG | cut -d. -f3)
+          MAJOR=$(echo "$TAG" | cut -d. -f1 | tr -d v)
+          MINOR=$(echo "$TAG" | cut -d. -f2)
+          PATCH=$(echo "$TAG" | cut -d. -f3)
 
           if grep -q "BREAKING CHANGE" commits.txt; then
             MAJOR=$((MAJOR+1))
             MINOR=0
             PATCH=0
 
-          elif grep -q "^feat" commits.txt; then
+          elif grep -qE "^feat(\(.+\))?:" commits.txt; then
             MINOR=$((MINOR+1))
             PATCH=0
 
-          elif grep -q "^fix" commits.txt; then
+          elif grep -qE "^fix(\(.+\))?:" commits.txt; then
             PATCH=$((PATCH+1))
 
           else
@@ -112,7 +110,16 @@ jobs:
           git tag "$NEW_TAG"
 
           echo "Pushing tag $NEW_TAG"
-          git push origin "$NEW_TAG"
+          git push origin "$NEW_TAG" || {
+            echo "Push failed, re-checking if tag exists..."
+            if git ls-remote --tags --refs origin "refs/tags/$NEW_TAG" | grep -q .; then
+              echo "Tag was created by another concurrent run. Treating as success."
+              exit 0
+            else
+              echo "Push failed for unknown reason."
+              exit 1
+            fi
+          }
 
       - name: ℹ️ No version change
         if: steps.bump.outputs.skip == 'true'
