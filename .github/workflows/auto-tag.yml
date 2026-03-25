@@ -39,9 +39,17 @@ jobs:
             git log "${LAST_TAG}..HEAD" --pretty=%B > commits.txt
           fi
 
-          echo "Commits collected:"
-          cat commits.txt
+          TOTAL_LINES=$(wc -l < commits.txt || echo 0)
+          echo "Commits collected (showing first 50 lines out of $TOTAL_LINES):"
+          head -n 50 commits.txt || true
+          if [ "$TOTAL_LINES" -gt 50 ]; then
+            echo "... (output truncated; enable step debug logging to see full commits.txt) ..."
+          fi
 
+          if [ "${ACTIONS_STEP_DEBUG}" = "true" ]; then
+            echo "Full contents of commits.txt (step debug enabled):"
+            cat commits.txt
+          fi
       - name: 🔢 Compute next version
         id: bump
         run: |
