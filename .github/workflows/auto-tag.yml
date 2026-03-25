@@ -93,7 +93,7 @@ jobs:
           fi
 
           echo "Checking if tag exists on remote..."
-          if git ls-remote --tags origin | grep -q "refs/tags/$NEW_TAG"; then
+          if git ls-remote --tags --refs origin "refs/tags/$NEW_TAG" | grep -q .; then
             echo "Tag already exists on remote. Skipping."
             exit 0
           fi
