@@ -1,0 +1,9 @@
+name: 🔧 Chore
+description: Maintenance or non-feature work
+title: "chore: "
+labels: ["type: chore"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description

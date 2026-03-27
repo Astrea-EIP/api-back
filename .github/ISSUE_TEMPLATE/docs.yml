@@ -1,0 +1,9 @@
+name: 📚 Docs
+description: Documentation update
+title: "docs: "
+labels: ["type: docs"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What needs to be documented?
