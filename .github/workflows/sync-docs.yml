@@ -1,0 +1,72 @@
+name: Sync docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout source repository
+        uses: actions/checkout@v6
+
+      - name: 📥 Checkout docs repository
+        uses: actions/checkout@v6
+        with:
+          repository: Astrea-EIP/docs
+          token: ${{ secrets.DOCS_TOKEN }}
+          path: docs-repo
+
+      - name: 🧭 Resolve target folder
+        id: target
+        run: |
+          case "${{ github.event.repository.name }}" in
+            api-back)
+              echo "dir=backend" >> "$GITHUB_OUTPUT"
+              ;;
+            app-web)
+              echo "dir=web" >> "$GITHUB_OUTPUT"
+              ;;
+            app-mobile)
+              echo "dir=mobile" >> "$GITHUB_OUTPUT"
+              ;;
+            core-moteur)
+              echo "dir=engine" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported repository: ${{ github.event.repository.name }}"
+              exit 1
+              ;;
+          esac
+
+      - name: 📂 Sync docs content
+        run: |
+          TARGET_DIR="docs-repo/docs/${{ steps.target.outputs.dir }}"
+
+          rm -rf "$TARGET_DIR"
+          mkdir -p "$TARGET_DIR"
+
+          cp -r docs/. "$TARGET_DIR/"
+
+      - name: 📝 Commit & push
+        run: |
+          cd docs-repo
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: sync from ${{ github.event.repository.name }}"
+            git push
+          fi
