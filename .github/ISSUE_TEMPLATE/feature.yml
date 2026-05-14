@@ -1,30 +1,28 @@
-name: 🚀 Feature
-description: Add a new feature
+name: Feature
+description: Request or define a user-facing capability
 title: "feat: "
-labels: ["type: feature"]
+labels: ["type:feature", "area:backend", "priority:P2-medium"]
 body:
   - type: textarea
-    id: description
+    id: outcome
     attributes:
-      label: Description
-      placeholder: What needs to be built?
+      label: Outcome
+      description: Describe the feature to deliver.
     validations:
       required: true
-
   - type: textarea
     id: value
     attributes:
       label: Business value
-      placeholder: Why is this needed?
+      description: Explain why this feature matters.
     validations:
       required: true
-
   - type: textarea
     id: acceptance
     attributes:
       label: Acceptance criteria
       placeholder: |
-        - [ ] condition 1
-        - [ ] condition 2
+        - [ ] Criterion 1
+        - [ ] Criterion 2
     validations:
       required: true

@@ -1,34 +1,33 @@
-name: 🐛 Bug
-description: Report a bug
+name: Bug
+description: Report a defect that requires a fix
 title: "fix: "
-labels: ["type: bug"]
+labels: ["type:bug", "area:backend", "priority:P1-high"]
 body:
   - type: textarea
-    id: description
+    id: problem
     attributes:
-      label: Bug description
+      label: Problem
+      description: Describe the incorrect behavior.
     validations:
       required: true
-
   - type: textarea
     id: steps
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1.
-        2.
-        3.
+        1. 
+        2. 
+        3. 
     validations:
       required: true
-
   - type: textarea
     id: expected
     attributes:
       label: Expected behavior
     validations:
       required: true
-
   - type: textarea
-    id: logs
+    id: evidence
     attributes:
-      label: Logs / Screenshots
+      label: Evidence
+      description: Add logs, screenshots, or other useful context.

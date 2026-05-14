@@ -1,9 +1,19 @@
-name: 📚 Docs
-description: Documentation update
+name: Documentation
+description: Update repository or handbook documentation
 title: "docs: "
-labels: ["type: docs"]
+labels: ["type:docs", "area:docs", "priority:P3-low"]
 body:
   - type: textarea
-    id: description
+    id: change
     attributes:
-      label: What needs to be documented?
+      label: Documentation change
+      description: Describe what must be updated.
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: Reason
+      description: Explain which behavior, workflow, or architecture change requires documentation.
+    validations:
+      required: true

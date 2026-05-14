@@ -1,0 +1,19 @@
+name: Spike
+description: Investigate uncertainty before implementation
+title: "spike: "
+labels: ["type:spike", "area:backend", "priority:P2-medium"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: State the uncertainty to resolve.
+    validations:
+      required: true
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: Expected output
+      description: State the decision, recommendation, or data expected from the spike.
+    validations:
+      required: true
