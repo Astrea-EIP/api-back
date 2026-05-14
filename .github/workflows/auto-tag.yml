@@ -69,12 +69,14 @@ jobs:
 
           if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
             echo "Tag ${NEW_TAG} already exists locally"
-            exit 1
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
           if git ls-remote --tags --refs origin "refs/tags/${NEW_TAG}" | grep -q .; then
             echo "Tag ${NEW_TAG} already exists on origin"
-            exit 1
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
           echo "last_tag=${LAST_TAG}" >> "$GITHUB_OUTPUT"
