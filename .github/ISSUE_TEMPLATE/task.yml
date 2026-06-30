@@ -1,0 +1,24 @@
+name: Task
+description: Define a focused technical work item
+title: "task: "
+labels: ["type:task", "area:backend", "priority:P2-medium"]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: Describe the technical work to complete.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: State what is included and excluded.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: Describe how the work will be verified.
