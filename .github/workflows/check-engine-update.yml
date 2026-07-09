@@ -1,0 +1,62 @@
+name: Check engine version
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: check-engine-update
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Find latest core-moteur release tag
+        id: latest
+        run: |
+          LATEST=$(git ls-remote --tags --refs https://github.com/Astrea-EIP/core-moteur.git \
+            | awk '{print $2}' | sed 's#refs/tags/##' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          test -n "$LATEST"
+          echo "tag=$LATEST" >> "$GITHUB_OUTPUT"
+
+      - name: Compare with pinned version
+        id: compare
+        run: |
+          CURRENT=$(cat engine-version.txt)
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          if [ "$CURRENT" = "${{ steps.latest.outputs.tag }}" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump engine-version.txt
+        if: steps.compare.outputs.changed == 'true'
+        run: echo "${{ steps.latest.outputs.tag }}" > engine-version.txt
+
+      - name: Open pull request
+        if: steps.compare.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: bump core-moteur engine to ${{ steps.latest.outputs.tag }}"
+          title: "chore: bump core-moteur engine to ${{ steps.latest.outputs.tag }}"
+          body: |
+            Automated update: a new core-moteur release tag was detected.
+
+            - Previous: `${{ steps.compare.outputs.current }}`
+            - New: `${{ steps.latest.outputs.tag }}`
+
+            CI will rebuild and test against this version before merge. Review and merge like any other pull request.
+          branch: chore/bump-engine-version
+          delete-branch: true

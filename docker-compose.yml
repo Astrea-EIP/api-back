@@ -1,0 +1,12 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - astrea-mongo-data:/data/db
+      - ./seed:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  astrea-mongo-data:

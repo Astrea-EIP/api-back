@@ -23,10 +23,15 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Read pinned engine version
+        id: engine-version
+        run: echo "ref=$(cat engine-version.txt)" >> "$GITHUB_OUTPUT"
+
       - name: Checkout engine
         uses: actions/checkout@v6
         with:
           repository: Astrea-EIP/core-moteur
+          ref: ${{ steps.engine-version.outputs.ref }}
           path: engine
 
       - name: Build engine

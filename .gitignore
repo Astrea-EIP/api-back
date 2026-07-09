@@ -487,3 +487,6 @@ $RECYCLE.BIN/
 # Application Settings
 appsettings.Development.json
 appsettings.Development.json
+
+# Locally built engine artifacts (fetched fresh, see engine-version.txt)
+engine-build-local/
