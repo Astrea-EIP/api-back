@@ -1,0 +1,56 @@
+name: Project Automation
+on:
+  issues:
+    types: [opened, assigned]
+  pull_request:
+    types: [review_requested]
+
+jobs:
+  manage_project:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      ORGANIZATION: Astrea-EIP
+      PROJECT_NUMBER: 1
+    steps:
+      - name: Gérer l'ajout et l'assignation de l'issue
+        if: github.event_name == 'issues'
+        run: |
+          ISSUE_URL="${{ github.event.issue.html_url }}"
+          
+          # 1. Récupérer les IDs globaux du projet et du champ "Status"
+          PROJECT_NODE_ID=$(gh project view $PROJECT_NUMBER --owner $ORGANIZATION --format json --jq '.id')
+          FIELD_DATA=$(gh project field-list $PROJECT_NUMBER --owner $ORGANIZATION --format json)
+          STATUS_FIELD_ID=$(echo "$FIELD_DATA" | jq -r '.fields[] | select(.name=="Status") | .id')
+          
+          # 2. Ajoute l'issue au projet et récupère l'ID de la carte
+          ITEM_ID=$(gh project item-add $PROJECT_NUMBER --owner $ORGANIZATION --url $ISSUE_URL --format json --jq '.id')
+          
+          # 3. Récupère l'ID de l'option selon l'action et modifie le statut
+          if [ "${{ github.event.action }}" == "assigned" ]; then
+            OPTION_ID=$(echo "$FIELD_DATA" | jq -r '.fields[] | select(.name=="Status") | .options[] | select(.name=="In Progress") | .id')
+            gh project item-edit --id $ITEM_ID --project-id $PROJECT_NODE_ID --field-id $STATUS_FIELD_ID --single-select-option-id $OPTION_ID
+          elif [ "${{ github.event.action }}" == "opened" ]; then
+            OPTION_ID=$(echo "$FIELD_DATA" | jq -r '.fields[] | select(.name=="Status") | .options[] | select(.name=="Todo") | .id')
+            gh project item-edit --id $ITEM_ID --project-id $PROJECT_NODE_ID --field-id $STATUS_FIELD_ID --single-select-option-id $OPTION_ID
+          fi
+
+      - name: Gérer la demande de review de la PR
+        if: github.event_name == 'pull_request'
+        run: |
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          
+          # Cherche l'URL de l'issue liée à la PR (ex: Closes #12)
+          ISSUE_URL=$(gh pr view $PR_URL --json closingIssuesReferences --jq '.closingIssuesReferences[0].url')
+          
+          if [ "$ISSUE_URL" != "null" ] && [ -n "$ISSUE_URL" ]; then
+            PROJECT_NODE_ID=$(gh project view $PROJECT_NUMBER --owner $ORGANIZATION --format json --jq '.id')
+            FIELD_DATA=$(gh project field-list $PROJECT_NUMBER --owner $ORGANIZATION --format json)
+            STATUS_FIELD_ID=$(echo "$FIELD_DATA" | jq -r '.fields[] | select(.name=="Status") | .id')
+            OPTION_ID=$(echo "$FIELD_DATA" | jq -r '.fields[] | select(.name=="Status") | .options[] | select(.name=="In Review") | .id')
+            
+            ITEM_ID=$(gh project item-add $PROJECT_NUMBER --owner $ORGANIZATION --url $ISSUE_URL --format json --jq '.id')
+            gh project item-edit --id $ITEM_ID --project-id $PROJECT_NODE_ID --field-id $STATUS_FIELD_ID --single-select-option-id $OPTION_ID
+          else
+            echo "Aucune issue n'est liée à cette PR."
+          fi
