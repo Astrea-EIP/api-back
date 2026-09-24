@@ -7,6 +7,7 @@ on:
 
 jobs:
   manage_project:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
