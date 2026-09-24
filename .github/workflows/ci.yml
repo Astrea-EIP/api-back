@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
@@ -28,7 +28,7 @@ jobs:
         run: echo "ref=$(cat engine-version.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Checkout engine
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: Astrea-EIP/core-moteur
           ref: ${{ steps.engine-version.outputs.ref }}
