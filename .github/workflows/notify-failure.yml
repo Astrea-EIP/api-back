@@ -5,7 +5,7 @@ name: Notify Teams on failure
 # Le nom dans `workflows:` doit correspondre exactement au `name:` du workflow.
 on:
   workflow_run:
-    workflows: ["CI - api-back", "Check engine version", "Publish Image", "Auto Tag"]
+    workflows: ["CI - api-back", "Check engine version", "Publish Image", "Auto Tag", "Project Automation"]
     types: [completed]
   workflow_dispatch: # test manuel depuis l'onglet Actions
 
