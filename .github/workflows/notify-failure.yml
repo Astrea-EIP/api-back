@@ -1,0 +1,62 @@
+name: Notify Teams on failure
+
+# Envoie une alerte dans le canal Teams "Alertes CI" quand l'un des workflows
+# listés ci-dessous se termine en échec. Aucun message en cas de succès.
+# Le nom dans `workflows:` doit correspondre exactement au `name:` du workflow.
+on:
+  workflow_run:
+    workflows: ["CI - api-back", "Check engine version", "Publish Image", "Auto Tag"]
+    types: [completed]
+  workflow_dispatch: # test manuel depuis l'onglet Actions
+
+permissions: {}
+
+jobs:
+  notify:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send failure alert to Teams
+        env:
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+          WORKFLOW: ${{ github.event.workflow_run.name || 'Test manuel' }}
+          BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+          ACTOR: ${{ github.event.workflow_run.actor.login || github.actor }}
+          RUN_EVENT: ${{ github.event.workflow_run.event || github.event_name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+        run: |
+          jq -n \
+            --arg repo "$REPO" \
+            --arg workflow "$WORKFLOW" \
+            --arg branch "$BRANCH" \
+            --arg actor "$ACTOR" \
+            --arg event "$RUN_EVENT" \
+            --arg url "$RUN_URL" \
+            '{
+              type: "message",
+              attachments: [{
+                contentType: "application/vnd.microsoft.card.adaptive",
+                contentUrl: null,
+                content: {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  type: "AdaptiveCard",
+                  version: "1.4",
+                  body: [
+                    { type: "TextBlock", size: "Medium", weight: "Bolder", color: "Attention", wrap: true,
+                      text: ("❌ Échec : " + $workflow) },
+                    { type: "FactSet", facts: [
+                      { title: "Dépôt", value: $repo },
+                      { title: "Branche", value: $branch },
+                      { title: "Événement", value: $event },
+                      { title: "Auteur", value: $actor }
+                    ] }
+                  ],
+                  actions: [{ type: "Action.OpenUrl", title: "Voir le run", url: $url }]
+                }
+              }]
+            }' \
+          | curl --fail-with-body -sS -X POST \
+              -H "Content-Type: application/json" \
+              --data @- \
+              "$TEAMS_WEBHOOK_URL"
