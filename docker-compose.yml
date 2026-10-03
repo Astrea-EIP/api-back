@@ -8,5 +8,26 @@ services:
       - astrea-mongo-data:/data/db
       - ./seed:/docker-entrypoint-initdb.d:ro
 
+  # Optional: the api image itself. Not started by a plain `docker compose up -d`,
+  # which CONTRIBUTING.md documents as starting only Mongo.
+  api:
+    profiles: ["api"]
+    build:
+      context: .
+      target: runtime
+    image: api-back:local
+    ports:
+      - "5217:5217"
+    depends_on:
+      - mongo
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      MongoDb__ConnectionString: mongodb://mongo:27017
+      MongoDb__DatabaseName: astrea_proto
+      GraphHopper__BaseUrl: ${GRAPHHOPPER_BASE_URL:-http://host.docker.internal:8989}
+      Nominatim__BaseUrl: ${NOMINATIM_BASE_URL:-https://nominatim.openstreetmap.org}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   astrea-mongo-data:
