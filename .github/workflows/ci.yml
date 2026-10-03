@@ -52,6 +52,14 @@ jobs:
       - name: Build backend
         run: dotnet build api-back.csproj --configuration Release --no-restore
 
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Check OpenAPI contract is up to date
+        run: |
+          dotnet swagger tofile --openapiversion 3.1 --output /tmp/api.generated.json bin/Release/net8.0/api-back.dll v1
+          diff -u docs/api.json /tmp/api.generated.json || { echo "docs/api.json is out of date — run scripts/update-api-contract.sh and commit the result"; exit 1; }
+
       - name: Run tests
         run: dotnet test api-back.csproj --configuration Release --no-build
 
