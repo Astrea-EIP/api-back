@@ -27,20 +27,18 @@ public class ItineraryController : ControllerBase
     /// <remarks>
     /// Requires the <c>access-token</c> header (see <c>GET /v0/auth/anonymous</c>).
     /// </remarks>
-    /// <param name="accessToken">The access-token header (unused in code; enforced by AccessTokenMiddleware).</param>
     /// <param name="request">Start/end points and the mobility profile to route for.</param>
     /// <response code="201">The itinerary was computed successfully.</response>
     /// <response code="400">The request body is invalid.</response>
     /// <response code="401">The access-token header is missing or invalid.</response>
     /// <response code="500">An unexpected error occurred.</response>
     [HttpPost(Name = "createItinerary")]
+    [Consumes("application/json")]
     [ProducesResponseType(typeof(ItineraryResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ServerErrorResponse), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> PostItinerary(
-        [FromHeader(Name = "access-token")] string accessToken,
-        [FromBody] CreateItineraryRequest request)
+    public async Task<IActionResult> PostItinerary([FromBody] CreateItineraryRequest request)
     {
         var result = await _itineraryService.ComputeItineraryAsync(request);
         return StatusCode(StatusCodes.Status201Created, result);
