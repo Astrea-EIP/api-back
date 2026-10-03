@@ -6,8 +6,12 @@ using proto_back.Shared.Errors;
 
 namespace proto_back.Controllers;
 
+/// <summary>
+/// Computes accessibility-aware itineraries.
+/// </summary>
 [ApiController]
 [Route("v0/itinerary")]
+[Produces("application/json")]
 public class ItineraryController : ControllerBase
 {
     private readonly IItineraryService _itineraryService;
@@ -19,8 +23,16 @@ public class ItineraryController : ControllerBase
 
     /// <summary>
     /// Compute an itinerary between two points.
-    /// Requires the access-token header.
     /// </summary>
+    /// <remarks>
+    /// Requires the <c>access-token</c> header (see <c>GET /v0/auth/anonymous</c>).
+    /// </remarks>
+    /// <param name="accessToken">The access-token header (unused in code; enforced by AccessTokenMiddleware).</param>
+    /// <param name="request">Start/end points and the mobility profile to route for.</param>
+    /// <response code="201">The itinerary was computed successfully.</response>
+    /// <response code="400">The request body is invalid.</response>
+    /// <response code="401">The access-token header is missing or invalid.</response>
+    /// <response code="500">An unexpected error occurred.</response>
     [HttpPost]
     [ProducesResponseType(typeof(ItineraryResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
