@@ -21,7 +21,10 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          global-json-file: global.json
+
+      - name: Show .NET SDK version in use
+        run: dotnet --version
 
       - name: Read pinned engine version
         id: engine-version
