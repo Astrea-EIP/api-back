@@ -12,7 +12,7 @@
           "Auth"
         ],
         "summary": "Get an anonymous access token.",
-        "description": "This endpoint is public: no `access-token` header is required. The returned\r\ntoken must be sent as the `access-token` header on every other request.\r\nTokens are kept in memory and are lost when the API restarts.",
+        "description": "This endpoint is public: no `access-token` header is required. The returned token must be sent as the `access-token` header on every other request. Tokens are kept in memory and are lost when the API restarts.",
         "operationId": "getAnonymousToken",
         "responses": {
           "202": {
@@ -330,7 +330,7 @@
           },
           "errorId": {
             "type": "string",
-            "description": "Unique identifier for this error. Quote it to the backend team when reporting an\r\nissue: it identifies the corresponding entry in the `error_logs` MongoDB\r\ncollection."
+            "description": "Unique identifier for this error. Quote it to the backend team when reporting an issue: it identifies the corresponding entry in the `error_logs` MongoDB collection."
           }
         },
         "additionalProperties": false,
@@ -344,7 +344,7 @@
         "properties": {
           "accessToken": {
             "type": "string",
-            "description": "The anonymous access token. Send it as the `access-token` header on every\r\nother request."
+            "description": "The anonymous access token. Send it as the `access-token` header on every other request."
           }
         },
         "additionalProperties": false,
