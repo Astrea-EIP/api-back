@@ -1,0 +1,12 @@
+extends:
+  - recommended
+
+rules:
+  # Intentional: no `servers` entry. Swagger UI uses the current host; base URLs are
+  # documented in docs/api.md instead (see Program.cs's AddSwaggerGen setup).
+  no-empty-servers: off
+
+  # Intentional: GET /v0/auth/anonymous is the one public, unauthenticated endpoint —
+  # that's the whole point of it. Every other operation does have security defined,
+  # via Shared/OpenApi/SecurityRequirementsOperationFilter.cs.
+  security-defined: off
