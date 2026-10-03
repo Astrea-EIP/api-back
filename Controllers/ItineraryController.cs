@@ -33,7 +33,7 @@ public class ItineraryController : ControllerBase
     /// <response code="400">The request body is invalid.</response>
     /// <response code="401">The access-token header is missing or invalid.</response>
     /// <response code="500">An unexpected error occurred.</response>
-    [HttpPost]
+    [HttpPost(Name = "createItinerary")]
     [ProducesResponseType(typeof(ItineraryResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

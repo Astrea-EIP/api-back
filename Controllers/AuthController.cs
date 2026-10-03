@@ -29,7 +29,7 @@ public class AuthController : ControllerBase
     /// <response code="202">A new anonymous access token was generated.</response>
     /// <response code="400">The request could not be processed.</response>
     /// <response code="500">An unexpected error occurred.</response>
-    [HttpGet("anonymous")]
+    [HttpGet("anonymous", Name = "getAnonymousToken")]
     [ProducesResponseType(typeof(proto_back.DTOs.Responses.TokenResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(Shared.Errors.ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Shared.Errors.ServerErrorResponse), StatusCodes.Status500InternalServerError)]
