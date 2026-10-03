@@ -25,7 +25,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:5217
+# ASPNETCORE_HTTP_PORTS (not ASPNETCORE_URLS) matches what the base image already expects;
+# ASPNETCORE_URLS triggers an "Overriding HTTP_PORTS" startup warning.
+ENV ASPNETCORE_HTTP_PORTS=5217
 EXPOSE 5217
 
+# base image provides the non-root "app" user (uid 1654) via $APP_UID
+USER $APP_UID
 ENTRYPOINT ["dotnet", "api-back.dll"]
