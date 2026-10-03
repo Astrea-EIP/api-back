@@ -78,6 +78,8 @@ major version tag. Watch for those when bumping the pinned tag you consume.
 
 - `docs/api.json` is **generated** — never edit it by hand.
 - Run `scripts/update-api-contract.sh` after any API change (new endpoint, changed
-  DTO, changed response code, etc.) and commit the result.
+  DTO, changed response code, etc.) and commit the result. Requires the **.NET 8
+  SDK**, pinned in `global.json` — the Swashbuckle CLI ships builds for multiple
+  runtimes and must run on the same one as the app.
 - CI fails the build if the committed `docs/api.json` doesn't match what the code
   actually generates.
