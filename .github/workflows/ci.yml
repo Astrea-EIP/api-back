@@ -63,6 +63,9 @@ jobs:
           dotnet swagger tofile --openapiversion 3.1 --output /tmp/api.generated.json bin/Release/net8.0/api-back.dll v1
           diff -u docs/api.json /tmp/api.generated.json || { echo "docs/api.json is out of date — run scripts/update-api-contract.sh and commit the result"; exit 1; }
 
+      - name: Lint OpenAPI contract
+        run: npx --yes @redocly/cli@2.54.3 lint docs/api.json
+
       - name: Run tests
         run: dotnet test api-back.csproj --configuration Release --no-build
 
