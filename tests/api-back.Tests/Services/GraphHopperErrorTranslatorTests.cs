@@ -45,6 +45,28 @@ public class GraphHopperErrorTranslatorTests
         Assert.DoesNotContain("bounds", apiException.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void TryTranslate_ConnectionNotFound_ReturnsRouteNotFound()
+    {
+        var translated = GraphHopperErrorTranslator.TryTranslate(
+            EngineError(GraphHopperErrorBodies.ConnectionNotFound), out var apiException);
+
+        Assert.True(translated);
+        var error = Assert.IsType<RouteNotFoundException>(apiException);
+        Assert.Equal(422, error.StatusCode);
+        Assert.DoesNotContain("Connection between locations", error.Message);
+    }
+
+    [Fact]
+    public void TryTranslate_MaximumNodesExceeded_ReturnsRouteNotFound()
+    {
+        var translated = GraphHopperErrorTranslator.TryTranslate(
+            EngineError(GraphHopperErrorBodies.MaximumNodesExceeded), out var apiException);
+
+        Assert.True(translated);
+        Assert.IsType<RouteNotFoundException>(apiException);
+    }
+
     [Theory]
     [InlineData("API error: HTTP 500: boom")]
     [InlineData("API error: HTTP error: Connection refused")]

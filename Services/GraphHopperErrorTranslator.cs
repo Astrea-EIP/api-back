@@ -16,6 +16,12 @@ internal static partial class GraphHopperErrorTranslator
         "PointNotFoundException",
     };
 
+    private static readonly string[] RouteErrors =
+    {
+        "ConnectionNotFoundException",
+        "MaximumNodesExceededException",
+    };
+
     /// <summary>
     /// Returns true and the client error to throw when <paramref name="exception"/> is a known
     /// GraphHopper error; false for anything else, which stays an unexpected error.
@@ -27,6 +33,14 @@ internal static partial class GraphHopperErrorTranslator
         if (PointErrors.Any(name => message.Contains(name, StringComparison.Ordinal)))
         {
             apiException = new PointOutOfMapException(DescribePoint(message), exception);
+            return true;
+        }
+
+        if (RouteErrors.Any(name => message.Contains(name, StringComparison.Ordinal)))
+        {
+            apiException = new RouteNotFoundException(
+                "Aucun trajet adapté à ce profil de mobilité n'a été trouvé entre ces deux points.",
+                exception);
             return true;
         }
 
