@@ -100,6 +100,12 @@ public class ItineraryService : IItineraryService
             }
         }
 
+        // TODO: champs acceptés par l'API mais pas encore gérés par le moteur, donc non transmis.
+        // A brancher quand core-moteur exposera une clé pour chacun :
+        // - PhysicalStrength (fauteuil) : tolérance aux pentes et aux trottoirs surélevés ;
+        // - IsAccompanied (fauteuil, malvoyant) ;
+        // - PathPreferences WidePathways, LitStreets, Benches (piéton).
+
         return userObject.ToJsonString();
     }
 
