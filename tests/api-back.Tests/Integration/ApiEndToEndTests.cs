@@ -167,12 +167,7 @@ public class ApiEndToEndTests
         Assert.Equal(new HashSet<string> { "error", "errorId" }, body.Select(kvp => kvp.Key).ToHashSet());
     }
 
-    [Fact(Skip = "Flaky due to a pre-existing race in ExceptionHandlingMiddleware: its fire-and-forget " +
-                 "Task.Run reads context.Request.Path after the request pipeline may have disposed " +
-                 "HttpContext features, throwing ObjectDisposedException before the Mongo write is " +
-                 "attempted. Reproduces intermittently under load (passes in isolation, fails when the " +
-                 "full suite runs in parallel). See Findings in the PR description; this is an " +
-                 "application bug, out of scope for this test-setup PR.")]
+    [Fact]
     public async Task PostItinerary_GraphHopperFails_ShouldPersistErrorLogWithRequestContext()
     {
         using var ctx = ApiTestContext.Create();
