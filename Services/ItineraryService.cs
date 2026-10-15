@@ -39,8 +39,16 @@ public class ItineraryService : IItineraryService
         // Construire le JSON utilisateur avec tous les paramètres disponibles
         string userJson = BuildUserJson(request);
 
-        // Appel au moteur Astrea
-        var astreaRouteResult = await AstreaEngineLib.AstreaRouteAsync(graphHopperUrl, points, userJson);
+        // Appel au moteur Astrea : les erreurs GraphHopper connues deviennent des erreurs client lisibles.
+        List<AstreaEngine.PointResponse> astreaRouteResult;
+        try
+        {
+            astreaRouteResult = await AstreaEngineLib.AstreaRouteAsync(graphHopperUrl, points, userJson);
+        }
+        catch (InvalidOperationException ex) when (GraphHopperErrorTranslator.TryTranslate(ex, out var apiException))
+        {
+            throw apiException!;
+        }
 
         // Mapper le résultat vers les DTOs de réponse
         var responsePoints = astreaRouteResult
