@@ -81,6 +81,25 @@ public class ItineraryService : IItineraryService
             userObject["can_take_stairs"] = request.CanClimbStairs.Value;
         }
 
+        // Piéton : "préfère les escaliers aux pentes" => éviter les pentes,
+        // "préfère les pentes aux escaliers" => éviter les escaliers.
+        // Les deux à la fois se contredisent : aucune préférence n'est envoyée.
+        if (request.MobilityProfile == MobilityProfile.Pedestrian && request.PathPreferences.HasValue)
+        {
+            var preferences = request.PathPreferences.Value;
+            var prefersStairs = preferences.HasFlag(PathPreference.Stairs);
+            var prefersSlopes = preferences.HasFlag(PathPreference.Slopes);
+
+            if (prefersStairs && !prefersSlopes)
+            {
+                userObject["avoid_slopes"] = true;
+            }
+            else if (prefersSlopes && !prefersStairs)
+            {
+                userObject["avoid_stairs"] = true;
+            }
+        }
+
         return userObject.ToJsonString();
     }
 

@@ -149,6 +149,77 @@ public class ItineraryServiceTests
     }
 
     [Fact]
+    public void BuildUserJson_PedestrianPrefersStairs_AsksTheEngineToAvoidSlopes()
+    {
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Pedestrian,
+            PathPreferences = PathPreference.Stairs
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.True(node["avoid_slopes"]!.GetValue<bool>());
+        Assert.False(node.ContainsKey("avoid_stairs"));
+    }
+
+    [Fact]
+    public void BuildUserJson_PedestrianPrefersSlopes_AsksTheEngineToAvoidStairs()
+    {
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Pedestrian,
+            PathPreferences = PathPreference.Slopes
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.True(node["avoid_stairs"]!.GetValue<bool>());
+        Assert.False(node.ContainsKey("avoid_slopes"));
+    }
+
+    [Fact]
+    public void BuildUserJson_PedestrianPrefersStairsAndSlopes_SendsNoPreference()
+    {
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Pedestrian,
+            PathPreferences = PathPreference.Stairs | PathPreference.Slopes
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.False(node.ContainsKey("avoid_stairs"));
+        Assert.False(node.ContainsKey("avoid_slopes"));
+    }
+
+    [Theory]
+    [InlineData(MobilityProfile.Wheelchair)]
+    [InlineData(MobilityProfile.Crutches)]
+    [InlineData(MobilityProfile.Blind)]
+    public void BuildUserJson_PathPreferencesOnOtherProfile_AreNotSent(MobilityProfile profile)
+    {
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = profile,
+            PathPreferences = PathPreference.Stairs
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.False(node.ContainsKey("avoid_stairs"));
+        Assert.False(node.ContainsKey("avoid_slopes"));
+    }
+
+    [Fact]
     public void ToEnginePreset_UnknownProfile_Throws()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => ItineraryService.ToEnginePreset((MobilityProfile)42));
