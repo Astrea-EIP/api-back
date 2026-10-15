@@ -36,7 +36,7 @@ public class ItineraryController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(ItineraryResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ServerErrorResponse), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PostItinerary([FromBody] CreateItineraryRequest request)
     {
