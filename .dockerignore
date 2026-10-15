@@ -1,0 +1,26 @@
+# obj/ is excluded because host restore output (project.assets.json) can overwrite the
+# container's own restore and break the --no-restore publish step.
+**/bin/
+**/obj/
+lib/
+engine/
+engine-build/
+engine-build-local/
+out/
+.git/
+.github/
+.vs/
+.vscode/
+.idea/
+**/*.user
+
+# appsettings.Development.json is excluded because it holds a developer's local secrets
+# (e.g. Mongo connection string) and must never be baked into an image.
+.env
+**/.env
+appsettings.Development.json
+
+docs/
+seed/
+*.md
+docker-compose*.yml
