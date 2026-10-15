@@ -18,6 +18,7 @@ Closes #
 - [ ] No documentation update required
 - [ ] Local backend docs updated
 - [ ] Central handbook update required
+- [ ] `docs/api.json` regenerated (if the API changed)
 
 ## Review notes
 

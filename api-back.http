@@ -1,6 +1,25 @@
 @proto_back_HostAddress = http://localhost:5217
 
-GET {{proto_back_HostAddress}}/weatherforecast/
+GET {{proto_back_HostAddress}}/v0/auth/anonymous
 Accept: application/json
+
+###
+
+# @name getToken
+GET {{proto_back_HostAddress}}/v0/auth/anonymous
+Accept: application/json
+
+###
+
+POST {{proto_back_HostAddress}}/v0/itinerary
+Accept: application/json
+Content-Type: application/json
+access-token: {{getToken.response.body.$.accessToken}}
+
+{
+  "start": "48.8566,2.3522",
+  "end": "48.8606,2.3376",
+  "mobility_profile": 0
+}
 
 ###
