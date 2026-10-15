@@ -58,48 +58,67 @@ public class ItineraryService : IItineraryService
     }
 
     /// <summary>
-    /// Construit le payload JSON utilisateur avec tous les paramètres de la requête.
-    /// Le moteur attend : mobility_profile (int), path_preferences (int bitmask).
-    /// Les champs additionnels sont inclus pour compatibilité future.
+    /// Construit le profil utilisateur envoyé au moteur (core-moteur), dans le format qu'il attend.
+    /// Le preset de base vient de <c>profile</c> (walking, wheelchair, crutches, blind) ;
+    /// le moteur applique ses valeurs par défaut puis les éventuelles surcharges.
     /// </summary>
     internal static string BuildUserJson(CreateItineraryRequest request)
     {
         var userObject = new JsonObject
         {
-            ["mobility_profile"] = (int)request.MobilityProfile,
+            ["profile"] = ToEnginePreset(request.MobilityProfile),
         };
 
-        // Préférences de parcours (bitmask : escaliers, pentes, chemins larges, éclairage, bancs)
-        if (request.PathPreferences.HasValue)
+        // Largeur du fauteuil (mètres) : remplace la largeur par défaut du preset fauteuil.
+        if (request.MobilityProfile == MobilityProfile.Wheelchair && request.WheelchairWidth.HasValue)
         {
-            userObject["path_preferences"] = (int)request.PathPreferences.Value;
+            userObject["width"] = request.WheelchairWidth.Value;
         }
 
-        // Largeur du fauteuil roulant (mètres)
-        if (request.WheelchairWidth.HasValue)
+        // Béquilles : peut monter des escaliers ou non.
+        if (request.MobilityProfile == MobilityProfile.Crutches && request.CanClimbStairs.HasValue)
         {
-            userObject["wheelchair_width"] = request.WheelchairWidth.Value;
+            userObject["can_take_stairs"] = request.CanClimbStairs.Value;
         }
 
-        // Force physique (0=Low, 1=Medium, 2=High)
-        if (request.PhysicalStrength.HasValue)
+        // Piéton : "préfère les escaliers aux pentes" => éviter les pentes,
+        // "préfère les pentes aux escaliers" => éviter les escaliers.
+        // Les deux à la fois se contredisent : aucune préférence n'est envoyée.
+        if (request.MobilityProfile == MobilityProfile.Pedestrian && request.PathPreferences.HasValue)
         {
-            userObject["physical_strength"] = (int)request.PhysicalStrength.Value;
+            var preferences = request.PathPreferences.Value;
+            var prefersStairs = preferences.HasFlag(PathPreference.Stairs);
+            var prefersSlopes = preferences.HasFlag(PathPreference.Slopes);
+
+            if (prefersStairs && !prefersSlopes)
+            {
+                userObject["avoid_slopes"] = true;
+            }
+            else if (prefersSlopes && !prefersStairs)
+            {
+                userObject["avoid_stairs"] = true;
+            }
         }
 
-        // Accompagné (impacte Wheelchair et Blind)
-        if (request.IsAccompanied.HasValue)
-        {
-            userObject["is_accompanied"] = request.IsAccompanied.Value;
-        }
-
-        // Peut monter des escaliers (Crutches)
-        if (request.CanClimbStairs.HasValue)
-        {
-            userObject["can_climb_stairs"] = request.CanClimbStairs.Value;
-        }
+        // TODO: champs acceptés par l'API mais pas encore gérés par le moteur, donc non transmis.
+        // A brancher quand core-moteur exposera une clé pour chacun :
+        // - PhysicalStrength (fauteuil) : tolérance aux pentes et aux trottoirs surélevés ;
+        // - IsAccompanied (fauteuil, malvoyant) ;
+        // - PathPreferences WidePathways, LitStreets, Benches (piéton).
 
         return userObject.ToJsonString();
     }
+
+    /// <summary>
+    /// Nom du preset moteur correspondant au profil de mobilité de l'API.
+    /// </summary>
+    internal static string ToEnginePreset(MobilityProfile profile) => profile switch
+    {
+        MobilityProfile.Pedestrian => "walking",
+        MobilityProfile.Wheelchair => "wheelchair",
+        MobilityProfile.Crutches => "crutches",
+        MobilityProfile.Blind => "blind",
+        _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unknown mobility profile."),
+    };
 
 }
