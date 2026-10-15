@@ -68,3 +68,31 @@ itinerary endpoint will just return a 500 until those services are reachable.
 
 The engine version baked into the image comes from `engine-version.txt`, exactly like
 CI — see [Building the engine locally](../CONTRIBUTING.md) for details.
+
+## Use the local API from the mobile app
+
+The mobile app calls the API running on a developer machine. The API listens on port `5217`
+in plain HTTP.
+
+### Start the API so the app can reach it
+
+| Where the app runs | How to start the API |
+|---|---|
+| Android emulator on the same machine | `dotnet run` (default `http` profile) or Docker |
+| Real phone on the same Wi-Fi | `dotnet run --launch-profile lan`, or Docker (`docker compose --profile api up -d --build`) |
+
+The default `http` profile only listens on `localhost`, so a real phone cannot reach it.
+The `lan` profile listens on all network interfaces (`http://0.0.0.0:5217`), like the Docker image.
+
+### Base URL to use in the app
+
+| Where the app runs | Base URL |
+|---|---|
+| Android emulator | `http://10.0.2.2:5217` (`10.0.2.2` is the host machine as seen from the emulator) |
+| iOS simulator | `http://localhost:5217` |
+| Real phone on the same Wi-Fi | `http://<computer IP>:5217`, e.g. `http://192.168.1.42:5217` |
+
+Find the computer IP with `ipconfig` (Windows, "IPv4 Address") or `ip addr` / `ifconfig`
+(Linux, macOS). It can change when you switch networks.
+
+Quick check from the phone browser: `http://<computer IP>:5217/swagger` should open Swagger.
