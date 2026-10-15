@@ -21,3 +21,10 @@ public class ErrorResponse
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 ```
+
+## Client errors
+
+Errors the client can fix (address not found, point outside the covered area, no route...)
+derive from `ApiException`. `ExceptionHandlingMiddleware` returns them with their own status
+code and `ErrorResponse` body (`{ "error": "..." }`), and does not store them in `error_logs`.
+Any other exception is still an unexpected 500 with an `errorId`.
