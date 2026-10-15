@@ -234,9 +234,7 @@ public class ApiEndToEndTests
     // Written for the CORRECT behavior and skipped, per the issue's instructions:
     // fixing the application is out of scope for this test-setup PR.
 
-    [Fact(Skip = "Contract violation: an unresolvable address should be a 400 (bad input), " +
-                 "but NominatimGeocodingService throws ArgumentException which ExceptionHandlingMiddleware " +
-                 "maps to a 500. See Findings in the PR description.")]
+    [Fact]
     public async Task PostItinerary_UnresolvableAddress_ShouldReturn400()
     {
         using var ctx = ApiTestContext.Create();
@@ -255,6 +253,9 @@ public class ApiEndToEndTests
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+        Assert.Contains("Nowhereland", body["error"]!.GetValue<string>());
+        Assert.Empty(ctx.Factory.ErrorLogRepository.Logs);
     }
 
     [Fact(Skip = "Contract violation: docs/api.json marks mobility_profile as required, so a missing " +
