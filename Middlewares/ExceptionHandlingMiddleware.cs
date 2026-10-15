@@ -24,6 +24,21 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
+        catch (ApiException ex)
+        {
+            // Client error with a readable message: not a crash, so no error log in MongoDB.
+            _logger.LogInformation("Client error {StatusCode}: {Message}", ex.StatusCode, ex.Message);
+
+            context.Response.StatusCode = ex.StatusCode;
+            context.Response.ContentType = "application/json";
+
+            var json = JsonSerializer.Serialize(new ErrorResponse { Error = ex.Message }, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+
+            await context.Response.WriteAsync(json);
+        }
         catch (Exception ex)
         {
             var errorId = Guid.NewGuid().ToString("N");
