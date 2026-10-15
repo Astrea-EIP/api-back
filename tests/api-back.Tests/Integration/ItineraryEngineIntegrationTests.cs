@@ -5,6 +5,7 @@ using proto_back.DTOs.Requests;
 using proto_back.DTOs.Responses;
 using proto_back.Interfaces.IServices;
 using proto_back.Services;
+using proto_back.Shared.Errors;
 using proto_back.Tests.Support;
 using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;
@@ -112,6 +113,22 @@ public class ItineraryEngineIntegrationTests : IDisposable
 
         await Assert.ThrowsAsync<InvalidDataException>(
             () => CreateService().ComputeItineraryAsync(NewRequest()));
+    }
+
+    [Fact]
+    public async Task ComputeItineraryAsync_GraphHopperPointOutOfBounds_ThrowsPointOutOfMap()
+    {
+        _graphHopper.Server
+            .Given(Request.Create().WithPath("/route").UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(400)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody(GraphHopperErrorBodies.PointOutOfBounds(0)));
+
+        var error = await Assert.ThrowsAsync<PointOutOfMapException>(
+            () => CreateService().ComputeItineraryAsync(NewRequest()));
+
+        Assert.StartsWith("Le point de départ", error.Message);
     }
 
     public void Dispose()
