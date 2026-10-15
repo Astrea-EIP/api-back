@@ -116,6 +116,38 @@ public class ItineraryServiceTests
         Assert.False(node.ContainsKey("width"));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void BuildUserJson_CrutchesWithCanClimbStairs_SendsCanTakeStairs(bool canClimbStairs)
+    {
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Crutches,
+            CanClimbStairs = canClimbStairs
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.True(node.ContainsKey("can_take_stairs"));
+        Assert.Equal(canClimbStairs, node["can_take_stairs"]!.GetValue<bool>());
+    }
+
+    [Theory]
+    [InlineData(MobilityProfile.Pedestrian)]
+    [InlineData(MobilityProfile.Wheelchair)]
+    [InlineData(MobilityProfile.Blind)]
+    public void BuildUserJson_CanClimbStairsOnOtherProfile_IsNotSent(MobilityProfile profile)
+    {
+        var request = new CreateItineraryRequest { Start = "a", End = "b", MobilityProfile = profile, CanClimbStairs = true };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.False(node.ContainsKey("can_take_stairs"));
+    }
+
     [Fact]
     public void ToEnginePreset_UnknownProfile_Throws()
     {

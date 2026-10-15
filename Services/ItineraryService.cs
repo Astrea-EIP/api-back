@@ -75,6 +75,12 @@ public class ItineraryService : IItineraryService
             userObject["width"] = request.WheelchairWidth.Value;
         }
 
+        // Béquilles : peut monter des escaliers ou non.
+        if (request.MobilityProfile == MobilityProfile.Crutches && request.CanClimbStairs.HasValue)
+        {
+            userObject["can_take_stairs"] = request.CanClimbStairs.Value;
+        }
+
         return userObject.ToJsonString();
     }
 
