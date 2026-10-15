@@ -58,48 +58,30 @@ public class ItineraryService : IItineraryService
     }
 
     /// <summary>
-    /// Construit le payload JSON utilisateur avec tous les paramètres de la requête.
-    /// Le moteur attend : mobility_profile (int), path_preferences (int bitmask).
-    /// Les champs additionnels sont inclus pour compatibilité future.
+    /// Construit le profil utilisateur envoyé au moteur (core-moteur), dans le format qu'il attend.
+    /// Le preset de base vient de <c>profile</c> (walking, wheelchair, crutches, blind) ;
+    /// le moteur applique ses valeurs par défaut puis les éventuelles surcharges.
     /// </summary>
     internal static string BuildUserJson(CreateItineraryRequest request)
     {
         var userObject = new JsonObject
         {
-            ["mobility_profile"] = (int)request.MobilityProfile,
+            ["profile"] = ToEnginePreset(request.MobilityProfile),
         };
-
-        // Préférences de parcours (bitmask : escaliers, pentes, chemins larges, éclairage, bancs)
-        if (request.PathPreferences.HasValue)
-        {
-            userObject["path_preferences"] = (int)request.PathPreferences.Value;
-        }
-
-        // Largeur du fauteuil roulant (mètres)
-        if (request.WheelchairWidth.HasValue)
-        {
-            userObject["wheelchair_width"] = request.WheelchairWidth.Value;
-        }
-
-        // Force physique (0=Low, 1=Medium, 2=High)
-        if (request.PhysicalStrength.HasValue)
-        {
-            userObject["physical_strength"] = (int)request.PhysicalStrength.Value;
-        }
-
-        // Accompagné (impacte Wheelchair et Blind)
-        if (request.IsAccompanied.HasValue)
-        {
-            userObject["is_accompanied"] = request.IsAccompanied.Value;
-        }
-
-        // Peut monter des escaliers (Crutches)
-        if (request.CanClimbStairs.HasValue)
-        {
-            userObject["can_climb_stairs"] = request.CanClimbStairs.Value;
-        }
 
         return userObject.ToJsonString();
     }
+
+    /// <summary>
+    /// Nom du preset moteur correspondant au profil de mobilité de l'API.
+    /// </summary>
+    internal static string ToEnginePreset(MobilityProfile profile) => profile switch
+    {
+        MobilityProfile.Pedestrian => "walking",
+        MobilityProfile.Wheelchair => "wheelchair",
+        MobilityProfile.Crutches => "crutches",
+        MobilityProfile.Blind => "blind",
+        _ => throw new ArgumentOutOfRangeException(nameof(profile), profile, "Unknown mobility profile."),
+    };
 
 }

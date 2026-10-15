@@ -56,161 +56,23 @@ public class ItineraryServiceTests
     }
 
     [Theory]
-    [InlineData(MobilityProfile.Pedestrian)]
-    [InlineData(MobilityProfile.Wheelchair)]
-    [InlineData(MobilityProfile.Crutches)]
-    [InlineData(MobilityProfile.Blind)]
-    public void BuildUserJson_OnlyMobilityProfileSet_ProducesExactlyOneKey(MobilityProfile profile)
+    [InlineData(MobilityProfile.Pedestrian, "walking")]
+    [InlineData(MobilityProfile.Wheelchair, "wheelchair")]
+    [InlineData(MobilityProfile.Crutches, "crutches")]
+    [InlineData(MobilityProfile.Blind, "blind")]
+    public void BuildUserJson_OnlyMobilityProfileSet_SendsOnlyTheEnginePreset(MobilityProfile profile, string expectedPreset)
     {
         var request = new CreateItineraryRequest { Start = "a", End = "b", MobilityProfile = profile };
 
-        var json = ItineraryService.BuildUserJson(request);
-        var node = JsonNode.Parse(json)!.AsObject();
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
 
         Assert.Single(node);
-        Assert.Equal((int)profile, node["mobility_profile"]!.GetValue<int>());
+        Assert.Equal(expectedPreset, node["profile"]!.GetValue<string>());
     }
 
     [Fact]
-    public void BuildUserJson_PathPreferencesSet_WritesCombinedFlagsAsInteger()
+    public void ToEnginePreset_UnknownProfile_Throws()
     {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Pedestrian,
-            PathPreferences = PathPreference.LitStreets | PathPreference.Benches
-        };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        Assert.Equal(24, node["path_preferences"]!.GetValue<int>());
-    }
-
-    [Fact]
-    public void BuildUserJson_WheelchairWidthSet_WritesDoubleValue()
-    {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Wheelchair,
-            WheelchairWidth = 0.8
-        };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        Assert.Equal(0.8, node["wheelchair_width"]!.GetValue<double>());
-    }
-
-    [Fact]
-    public void BuildUserJson_WheelchairWidthSet_UnderFrFrCulture_StillWritesInvariantDouble()
-    {
-        using var _ = new CultureScope("fr-FR");
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Wheelchair,
-            WheelchairWidth = 0.8
-        };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        Assert.Equal(0.8, node["wheelchair_width"]!.GetValue<double>());
-    }
-
-    [Fact]
-    public void BuildUserJson_PhysicalStrengthSet_WritesIntegerEnumValue()
-    {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Wheelchair,
-            PhysicalStrength = PhysicalStrength.High
-        };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        Assert.Equal(2, node["physical_strength"]!.GetValue<int>());
-    }
-
-    [Fact]
-    public void BuildUserJson_IsAccompaniedTrue_WritesTrue()
-    {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Blind,
-            IsAccompanied = true
-        };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        Assert.True(node["is_accompanied"]!.GetValue<bool>());
-    }
-
-    [Fact]
-    public void BuildUserJson_CanClimbStairsFalse_IsPresentAsFalseNotOmitted()
-    {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Crutches,
-            CanClimbStairs = false
-        };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        Assert.True(node.ContainsKey("can_climb_stairs"));
-        Assert.False(node["can_climb_stairs"]!.GetValue<bool>());
-    }
-
-    [Fact]
-    public void BuildUserJson_OptionalFieldsNull_AreOmitted()
-    {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Pedestrian
-        };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        Assert.False(node.ContainsKey("path_preferences"));
-        Assert.False(node.ContainsKey("wheelchair_width"));
-        Assert.False(node.ContainsKey("physical_strength"));
-        Assert.False(node.ContainsKey("is_accompanied"));
-        Assert.False(node.ContainsKey("can_climb_stairs"));
-    }
-
-    [Fact]
-    public void BuildUserJson_AllFieldsSet_KeysAreExactlyTheSixDocumentedOnes()
-    {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Wheelchair,
-            PathPreferences = PathPreference.Stairs,
-            WheelchairWidth = 0.7,
-            PhysicalStrength = PhysicalStrength.Medium,
-            IsAccompanied = false,
-            CanClimbStairs = true
-        };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        var expectedKeys = new HashSet<string>
-        {
-            "mobility_profile", "path_preferences", "wheelchair_width",
-            "physical_strength", "is_accompanied", "can_climb_stairs"
-        };
-
-        Assert.Equal(expectedKeys, node.Select(kvp => kvp.Key).ToHashSet());
+        Assert.Throws<ArgumentOutOfRangeException>(() => ItineraryService.ToEnginePreset((MobilityProfile)42));
     }
 }
