@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>proto_back</RootNamespace>
-    <DefaultItemExcludes>$(DefaultItemExcludes);engine/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);engine/**;tests/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +25,14 @@
     <None Remove="engine/**" />
     <Content Remove="engine/**" />
     <EmbeddedResource Remove="engine/**" />
+    <Compile Remove="tests/**/*.cs" />
+    <None Remove="tests/**" />
+    <Content Remove="tests/**" />
+    <EmbeddedResource Remove="tests/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="api-back.Tests" />
   </ItemGroup>
 
 </Project>

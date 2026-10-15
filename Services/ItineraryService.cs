@@ -62,7 +62,7 @@ public class ItineraryService : IItineraryService
     /// Le moteur attend : mobility_profile (int), path_preferences (int bitmask).
     /// Les champs additionnels sont inclus pour compatibilité future.
     /// </summary>
-    private static string BuildUserJson(CreateItineraryRequest request)
+    internal static string BuildUserJson(CreateItineraryRequest request)
     {
         var userObject = new JsonObject
         {

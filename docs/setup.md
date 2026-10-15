@@ -10,7 +10,7 @@ sidebar_position: 2
 ```bash
 dotnet restore api-back.csproj
 dotnet build api-back.csproj --configuration Release
-dotnet test api-back.csproj --configuration Release
+dotnet test api-back.sln --configuration Release
 ```
 
 ## Validation

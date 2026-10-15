@@ -44,16 +44,25 @@ jobs:
           cp engine-build/AstreaEngine.dll lib/AstreaEngine.dll
 
       - name: Restore dependencies
-        run: dotnet restore api-back.csproj
+        run: dotnet restore api-back.sln
 
       - name: Check formatting
-        run: dotnet format api-back.csproj --verify-no-changes
+        run: dotnet format api-back.sln --verify-no-changes
 
-      - name: Build backend
-        run: dotnet build api-back.csproj --configuration Release --no-restore
+      - name: Build solution
+        run: dotnet build api-back.sln --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test api-back.csproj --configuration Release --no-build
+        run: |
+          dotnet test api-back.sln -c Release --no-build \
+            --logger trx --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/
 
       - name: Publish
         run: dotnet publish api-back.csproj -c Release -o out --no-build
