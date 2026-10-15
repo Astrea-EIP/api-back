@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using proto_back.Interfaces.IRepositories;
 using proto_back.Middlewares;
+using proto_back.Shared.Errors;
 using proto_back.Tests.Support;
 
 namespace proto_back.Tests.Middlewares;
@@ -151,6 +152,41 @@ public class ExceptionHandlingMiddlewareTests
         {
             _gate.Wait(TimeSpan.FromSeconds(5));
             return _inner.CreateScope();
+        }
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ApiException_ReturnsItsStatusAndReadableMessage()
+    {
+        var context = CreateContext();
+        var (middleware, _) = CreateMiddleware(_ => throw new TestApiException(422, "Aucun trajet trouvé."));
+
+        await middleware.InvokeAsync(context);
+        var body = await ReadBodyAsJsonAsync(context);
+
+        Assert.Equal(422, context.Response.StatusCode);
+        Assert.Equal("application/json", context.Response.ContentType);
+        Assert.Equal(new[] { "error" }, body.Select(kvp => kvp.Key));
+        Assert.Equal("Aucun trajet trouvé.", body["error"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ApiException_IsNotStoredAsACrash()
+    {
+        var context = CreateContext();
+        var (middleware, repository) = CreateMiddleware(_ => throw new TestApiException(400, "Adresse introuvable."));
+
+        await middleware.InvokeAsync(context);
+        await Task.Delay(200);
+
+        Assert.Empty(repository.Logs);
+    }
+
+    private sealed class TestApiException : ApiException
+    {
+        public TestApiException(int statusCode, string message)
+            : base(statusCode, message)
+        {
         }
     }
 
