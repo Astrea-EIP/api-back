@@ -266,7 +266,7 @@ public class ApiEndToEndTests
         var paths = doc["paths"]!.AsObject();
 
         var itinerary = paths["/v0/itinerary"]!["post"]!["responses"]!.AsObject();
-        Assert.Equal(new HashSet<string> { "201", "400", "401", "500" }, itinerary.Select(kvp => kvp.Key).ToHashSet());
+        Assert.Equal(new HashSet<string> { "201", "400", "401", "422", "500" }, itinerary.Select(kvp => kvp.Key).ToHashSet());
 
         var auth = paths["/v0/auth/anonymous"]!["get"]!["responses"]!.AsObject();
         Assert.Equal(new HashSet<string> { "202", "400", "500" }, auth.Select(kvp => kvp.Key).ToHashSet());
