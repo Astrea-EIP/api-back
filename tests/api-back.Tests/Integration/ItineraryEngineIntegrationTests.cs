@@ -131,6 +131,20 @@ public class ItineraryEngineIntegrationTests : IDisposable
         Assert.StartsWith("Le point de départ", error.Message);
     }
 
+    [Fact]
+    public async Task ComputeItineraryAsync_GraphHopperConnectionNotFound_ThrowsRouteNotFound()
+    {
+        _graphHopper.Server
+            .Given(Request.Create().WithPath("/route").UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(400)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody(GraphHopperErrorBodies.ConnectionNotFound));
+
+        await Assert.ThrowsAsync<RouteNotFoundException>(
+            () => CreateService().ComputeItineraryAsync(NewRequest()));
+    }
+
     public void Dispose()
     {
         _graphHopper.Dispose();
