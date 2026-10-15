@@ -217,6 +217,43 @@ public class ApiEndToEndTests
         Assert.Contains("GraphHopper:BaseUrl", body["error"]!.GetValue<string>());
     }
 
+    public static IEnumerable<object[]> GraphHopperClientErrors()
+    {
+        yield return new object[] { "start out of bounds", GraphHopperErrorBodies.PointOutOfBounds(0) };
+        yield return new object[] { "end not found", GraphHopperErrorBodies.PointNotFound(1) };
+        yield return new object[] { "no route", GraphHopperErrorBodies.ConnectionNotFound };
+    }
+
+    [Theory]
+    [MemberData(nameof(GraphHopperClientErrors))]
+    public async Task PostItinerary_GraphHopperClientError_Returns422WithReadableErrorAndNoCrashLog(string _, string graphHopperBody)
+    {
+        using var ctx = ApiTestContext.Create();
+        ctx.GraphHopper.Server
+            .Given(Request.Create().WithPath("/route").UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(400)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody(graphHopperBody));
+
+        var token = await ctx.Client.GetAnonymousTokenAsync();
+        ctx.Client.DefaultRequestHeaders.Add("access-token", token);
+
+        var response = await ctx.Client.PostAsJsonAsync("/v0/itinerary", new
+        {
+            start = "48.8566,2.3522",
+            end = "48.8606,2.3376",
+            mobility_profile = 1
+        });
+
+        Assert.Equal((HttpStatusCode)422, response.StatusCode);
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+        Assert.Equal(new[] { "error" }, body.Select(kvp => kvp.Key));
+        Assert.DoesNotContain("graphhopper", body["error"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
+        await Task.Delay(200);
+        Assert.Empty(ctx.Factory.ErrorLogRepository.Logs);
+    }
+
     [Fact]
     public async Task GetSwaggerDocument_NoToken_Returns200WithExpectedOperationsAndStatusCodes()
     {
