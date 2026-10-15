@@ -69,6 +69,12 @@ public class ItineraryService : IItineraryService
             ["profile"] = ToEnginePreset(request.MobilityProfile),
         };
 
+        // Largeur du fauteuil (mètres) : remplace la largeur par défaut du preset fauteuil.
+        if (request.MobilityProfile == MobilityProfile.Wheelchair && request.WheelchairWidth.HasValue)
+        {
+            userObject["width"] = request.WheelchairWidth.Value;
+        }
+
         return userObject.ToJsonString();
     }
 

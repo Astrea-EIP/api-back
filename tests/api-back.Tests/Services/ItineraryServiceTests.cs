@@ -71,6 +71,52 @@ public class ItineraryServiceTests
     }
 
     [Fact]
+    public void BuildUserJson_WheelchairWidthSet_SendsItAsEngineWidth()
+    {
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Wheelchair,
+            WheelchairWidth = 0.8
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.Equal(0.8, node["width"]!.GetValue<double>());
+    }
+
+    [Fact]
+    public void BuildUserJson_WheelchairWidthSet_UnderFrFrCulture_StillWritesInvariantDouble()
+    {
+        using var _ = new CultureScope("fr-FR");
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Wheelchair,
+            WheelchairWidth = 0.8
+        };
+
+        var json = ItineraryService.BuildUserJson(request);
+
+        Assert.Contains("\"width\":0.8", json);
+    }
+
+    [Theory]
+    [InlineData(MobilityProfile.Pedestrian)]
+    [InlineData(MobilityProfile.Crutches)]
+    [InlineData(MobilityProfile.Blind)]
+    public void BuildUserJson_WheelchairWidthOnOtherProfile_IsNotSent(MobilityProfile profile)
+    {
+        var request = new CreateItineraryRequest { Start = "a", End = "b", MobilityProfile = profile, WheelchairWidth = 0.8 };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.False(node.ContainsKey("width"));
+    }
+
+    [Fact]
     public void ToEnginePreset_UnknownProfile_Throws()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => ItineraryService.ToEnginePreset((MobilityProfile)42));
