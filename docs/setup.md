@@ -96,3 +96,19 @@ Find the computer IP with `ipconfig` (Windows, "IPv4 Address") or `ip addr` / `i
 (Linux, macOS). It can change when you switch networks.
 
 Quick check from the phone browser: `http://<computer IP>:5217/swagger` should open Swagger.
+
+### Troubleshooting
+
+- **The phone cannot connect at all.** Check that the phone and the computer are on the same
+  network, and that the firewall allows inbound TCP on port `5217` (on Windows, accept the prompt
+  shown the first time, or add an inbound rule for a private network).
+- **Requests are blocked by the app.** The local API is plain HTTP. Android (API 28+) and iOS
+  block cleartext HTTP by default, so the mobile app must allow it for its development build only.
+  This is configured in the mobile repository, not here.
+- **Do not use the `https` profile from a phone.** It only listens on `localhost`, and it
+  redirects HTTP calls to HTTPS on port `7028`. Use the `lan` profile instead.
+- **401 after restarting the API.** Anonymous tokens are kept in memory: get a new one with
+  `GET /v0/auth/anonymous` and retry.
+- **Simulated GPS position.** Send it as the `start` of the itinerary in the `"lat,lng"` format
+  (no geocoding needed). It must be inside the OSM extract loaded in GraphHopper, otherwise the
+  itinerary request fails (see issue #87 for clearer error codes).
