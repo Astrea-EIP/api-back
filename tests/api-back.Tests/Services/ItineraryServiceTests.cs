@@ -219,6 +219,33 @@ public class ItineraryServiceTests
         Assert.False(node.ContainsKey("avoid_slopes"));
     }
 
+    // Champs pas encore gérés par le moteur : volontairement non transmis (voir le TODO de BuildUserJson).
+    [Fact]
+    public void BuildUserJson_FieldsNotHandledByTheEngineYet_AreNotSent()
+    {
+        var wheelchair = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Wheelchair,
+            PhysicalStrength = PhysicalStrength.High,
+            IsAccompanied = true
+        };
+        var pedestrian = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Pedestrian,
+            PathPreferences = PathPreference.WidePathways | PathPreference.LitStreets | PathPreference.Benches
+        };
+
+        var wheelchairNode = JsonNode.Parse(ItineraryService.BuildUserJson(wheelchair))!.AsObject();
+        var pedestrianNode = JsonNode.Parse(ItineraryService.BuildUserJson(pedestrian))!.AsObject();
+
+        Assert.Equal(new[] { "profile" }, wheelchairNode.Select(kvp => kvp.Key));
+        Assert.Equal(new[] { "profile" }, pedestrianNode.Select(kvp => kvp.Key));
+    }
+
     [Fact]
     public void ToEnginePreset_UnknownProfile_Throws()
     {
