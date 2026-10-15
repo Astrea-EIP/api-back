@@ -10,7 +10,7 @@ Closes #
 
 - [ ] `dotnet restore api-back.csproj`
 - [ ] `dotnet build api-back.csproj --configuration Release`
-- [ ] `dotnet test api-back.csproj --configuration Release`
+- [ ] `dotnet test api-back.sln --configuration Release`
 - [ ] `dotnet publish -c Release -o out`
 
 ## Documentation impact
