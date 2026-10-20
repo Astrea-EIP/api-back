@@ -24,11 +24,31 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
+        catch (ApiException ex)
+        {
+            // Client error with a readable message: not a crash, so no error log in MongoDB.
+            _logger.LogInformation("Client error {StatusCode}: {Message}", ex.StatusCode, ex.Message);
+
+            context.Response.StatusCode = ex.StatusCode;
+            context.Response.ContentType = "application/json";
+
+            var json = JsonSerializer.Serialize(new ErrorResponse { Error = ex.Message }, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+
+            await context.Response.WriteAsync(json);
+        }
         catch (Exception ex)
         {
             var errorId = Guid.NewGuid().ToString("N");
 
             _logger.LogError(ex, "Unhandled exception caught. ErrorId: {ErrorId}", errorId);
+
+            // Capture the request data now: the background task below often runs after the
+            // response is sent, when the HttpContext has already been released.
+            var requestPath = context.Request.Path.Value ?? string.Empty;
+            var httpMethod = context.Request.Method;
 
             // Persist error log to MongoDB asynchronously (fire-and-forget)
             _ = Task.Run(async () =>
@@ -43,8 +63,8 @@ public class ExceptionHandlingMiddleware
                         ErrorId = errorId,
                         Message = ex.Message,
                         StackTrace = ex.StackTrace,
-                        RequestPath = context.Request.Path.Value ?? string.Empty,
-                        HttpMethod = context.Request.Method,
+                        RequestPath = requestPath,
+                        HttpMethod = httpMethod,
                         OccurredAt = DateTime.UtcNow
                     };
 

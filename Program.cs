@@ -1,3 +1,5 @@
+using System.Reflection;
+using Microsoft.OpenApi;
 using MongoDB.Driver;
 using proto_back.Configurations;
 using proto_back.Interfaces.IRepositories;
@@ -5,7 +7,9 @@ using proto_back.Interfaces.IServices;
 using proto_back.Middlewares;
 using proto_back.Repositories;
 using proto_back.Services;
+using proto_back.Shared.OpenApi;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using proto_back.Shared.Errors;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,7 +27,6 @@ builder.Services.AddControllers()
         };
     });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("LocalWeb", policy =>
@@ -33,6 +36,39 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
+});
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Astrea API",
+        Version = "v0",
+        Description = "Computes accessibility-aware itineraries for ASTREA's Beta Test Plan. " +
+                       "Call GET /v0/auth/anonymous to obtain a token, then send it as the " +
+                       "access-token header on every other request."
+    });
+
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile), includeControllerXmlComments: true);
+
+    options.AddSecurityDefinition(SecurityRequirementsOperationFilter.SchemeName, new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Header,
+        Name = "access-token",
+        Description = "Anonymous access token obtained from GET /v0/auth/anonymous. " +
+                       "Send it as the access-token header on every other request."
+    });
+    options.OperationFilter<SecurityRequirementsOperationFilter>();
+
+    options.CustomOperationIds(apiDescription =>
+        (apiDescription.ActionDescriptor as ControllerActionDescriptor)?.AttributeRouteInfo?.Name);
+
+    options.SupportNonNullableReferenceTypes();
+    options.NonNullableReferenceTypesAsRequired();
+    options.SchemaFilter<RequiredValueTypeSchemaFilter>();
+    options.SchemaFilter<EnumSchemaFilter>();
+    options.SchemaFilter<FlagsEnumSchemaFilter>();
 });
 
 // MongoDB configuration
@@ -68,8 +104,8 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwagger(options => options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);
+    app.UseSwaggerUI(options => options.ConfigObject.PersistAuthorization = true);
 }
 
 app.UseHttpsRedirection();
@@ -83,3 +119,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }

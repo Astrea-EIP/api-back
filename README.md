@@ -26,7 +26,7 @@ Use the .NET SDK required by the project.
 ```bash
 dotnet restore api-back.csproj
 dotnet build api-back.csproj --configuration Release
-dotnet test api-back.csproj --configuration Release
+dotnet test api-back.sln --configuration Release
 ```
 
 ## Documentation

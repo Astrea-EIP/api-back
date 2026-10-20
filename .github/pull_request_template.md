@@ -10,7 +10,7 @@ Closes #
 
 - [ ] `dotnet restore api-back.csproj`
 - [ ] `dotnet build api-back.csproj --configuration Release`
-- [ ] `dotnet test api-back.csproj --configuration Release`
+- [ ] `dotnet test api-back.sln --configuration Release`
 - [ ] `dotnet publish -c Release -o out`
 
 ## Documentation impact
@@ -18,6 +18,7 @@ Closes #
 - [ ] No documentation update required
 - [ ] Local backend docs updated
 - [ ] Central handbook update required
+- [ ] `docs/api.json` regenerated (if the API changed)
 
 ## Review notes
 
