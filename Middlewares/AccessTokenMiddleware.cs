@@ -9,8 +9,9 @@ public class AccessTokenMiddleware
     private readonly RequestDelegate _next;
     private const string AccessTokenHeader = "access-token";
 
-    // Routes that do not require authentication
-    private static readonly string[] PublicPrefixes = { "/v0/auth/", "/swagger" };
+    // Routes that do not require authentication. Internal so Program.cs's Swagger setup
+    // can reuse the same list when deciding which operations need the security requirement.
+    internal static readonly string[] PublicPrefixes = { "/v0/auth/", "/swagger" };
 
     public AccessTokenMiddleware(RequestDelegate next)
     {
