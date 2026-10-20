@@ -5,6 +5,11 @@ sidebar_position: 2
 
 # Setup
 
+## Prerequisites
+
+The **.NET 8 SDK** is required and pinned in `global.json`. If multiple SDKs are
+installed, `dotnet` resolves to 8.x in this repo regardless of what else is present.
+
 ## Commands
 
 ```bash
