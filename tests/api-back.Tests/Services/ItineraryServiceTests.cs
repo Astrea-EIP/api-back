@@ -56,39 +56,22 @@ public class ItineraryServiceTests
     }
 
     [Theory]
-    [InlineData(MobilityProfile.Pedestrian)]
-    [InlineData(MobilityProfile.Wheelchair)]
-    [InlineData(MobilityProfile.Crutches)]
-    [InlineData(MobilityProfile.Blind)]
-    public void BuildUserJson_OnlyMobilityProfileSet_ProducesExactlyOneKey(MobilityProfile profile)
+    [InlineData(MobilityProfile.Pedestrian, "walking")]
+    [InlineData(MobilityProfile.Wheelchair, "wheelchair")]
+    [InlineData(MobilityProfile.Crutches, "crutches")]
+    [InlineData(MobilityProfile.Blind, "blind")]
+    public void BuildUserJson_OnlyMobilityProfileSet_SendsOnlyTheEnginePreset(MobilityProfile profile, string expectedPreset)
     {
         var request = new CreateItineraryRequest { Start = "a", End = "b", MobilityProfile = profile };
 
-        var json = ItineraryService.BuildUserJson(request);
-        var node = JsonNode.Parse(json)!.AsObject();
-
-        Assert.Single(node);
-        Assert.Equal((int)profile, node["mobility_profile"]!.GetValue<int>());
-    }
-
-    [Fact]
-    public void BuildUserJson_PathPreferencesSet_WritesCombinedFlagsAsInteger()
-    {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Pedestrian,
-            PathPreferences = PathPreference.LitStreets | PathPreference.Benches
-        };
-
         var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
 
-        Assert.Equal(24, node["path_preferences"]!.GetValue<int>());
+        Assert.Single(node);
+        Assert.Equal(expectedPreset, node["profile"]!.GetValue<string>());
     }
 
     [Fact]
-    public void BuildUserJson_WheelchairWidthSet_WritesDoubleValue()
+    public void BuildUserJson_WheelchairWidthSet_SendsItAsEngineWidth()
     {
         var request = new CreateItineraryRequest
         {
@@ -100,7 +83,7 @@ public class ItineraryServiceTests
 
         var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
 
-        Assert.Equal(0.8, node["wheelchair_width"]!.GetValue<double>());
+        Assert.Equal(0.8, node["width"]!.GetValue<double>());
     }
 
     [Fact]
@@ -115,102 +98,157 @@ public class ItineraryServiceTests
             WheelchairWidth = 0.8
         };
 
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+        var json = ItineraryService.BuildUserJson(request);
 
-        Assert.Equal(0.8, node["wheelchair_width"]!.GetValue<double>());
+        Assert.Contains("\"width\":0.8", json);
     }
 
-    [Fact]
-    public void BuildUserJson_PhysicalStrengthSet_WritesIntegerEnumValue()
+    [Theory]
+    [InlineData(MobilityProfile.Pedestrian)]
+    [InlineData(MobilityProfile.Crutches)]
+    [InlineData(MobilityProfile.Blind)]
+    public void BuildUserJson_WheelchairWidthOnOtherProfile_IsNotSent(MobilityProfile profile)
     {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Wheelchair,
-            PhysicalStrength = PhysicalStrength.High
-        };
+        var request = new CreateItineraryRequest { Start = "a", End = "b", MobilityProfile = profile, WheelchairWidth = 0.8 };
 
         var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
 
-        Assert.Equal(2, node["physical_strength"]!.GetValue<int>());
+        Assert.False(node.ContainsKey("width"));
     }
 
-    [Fact]
-    public void BuildUserJson_IsAccompaniedTrue_WritesTrue()
-    {
-        var request = new CreateItineraryRequest
-        {
-            Start = "a",
-            End = "b",
-            MobilityProfile = MobilityProfile.Blind,
-            IsAccompanied = true
-        };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        Assert.True(node["is_accompanied"]!.GetValue<bool>());
-    }
-
-    [Fact]
-    public void BuildUserJson_CanClimbStairsFalse_IsPresentAsFalseNotOmitted()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void BuildUserJson_CrutchesWithCanClimbStairs_SendsCanTakeStairs(bool canClimbStairs)
     {
         var request = new CreateItineraryRequest
         {
             Start = "a",
             End = "b",
             MobilityProfile = MobilityProfile.Crutches,
-            CanClimbStairs = false
+            CanClimbStairs = canClimbStairs
         };
 
         var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
 
-        Assert.True(node.ContainsKey("can_climb_stairs"));
-        Assert.False(node["can_climb_stairs"]!.GetValue<bool>());
+        Assert.True(node.ContainsKey("can_take_stairs"));
+        Assert.Equal(canClimbStairs, node["can_take_stairs"]!.GetValue<bool>());
+    }
+
+    [Theory]
+    [InlineData(MobilityProfile.Pedestrian)]
+    [InlineData(MobilityProfile.Wheelchair)]
+    [InlineData(MobilityProfile.Blind)]
+    public void BuildUserJson_CanClimbStairsOnOtherProfile_IsNotSent(MobilityProfile profile)
+    {
+        var request = new CreateItineraryRequest { Start = "a", End = "b", MobilityProfile = profile, CanClimbStairs = true };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.False(node.ContainsKey("can_take_stairs"));
     }
 
     [Fact]
-    public void BuildUserJson_OptionalFieldsNull_AreOmitted()
+    public void BuildUserJson_PedestrianPrefersStairs_AsksTheEngineToAvoidSlopes()
     {
         var request = new CreateItineraryRequest
         {
             Start = "a",
             End = "b",
-            MobilityProfile = MobilityProfile.Pedestrian
+            MobilityProfile = MobilityProfile.Pedestrian,
+            PathPreferences = PathPreference.Stairs
         };
 
         var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
 
-        Assert.False(node.ContainsKey("path_preferences"));
-        Assert.False(node.ContainsKey("wheelchair_width"));
-        Assert.False(node.ContainsKey("physical_strength"));
-        Assert.False(node.ContainsKey("is_accompanied"));
-        Assert.False(node.ContainsKey("can_climb_stairs"));
+        Assert.True(node["avoid_slopes"]!.GetValue<bool>());
+        Assert.False(node.ContainsKey("avoid_stairs"));
     }
 
     [Fact]
-    public void BuildUserJson_AllFieldsSet_KeysAreExactlyTheSixDocumentedOnes()
+    public void BuildUserJson_PedestrianPrefersSlopes_AsksTheEngineToAvoidStairs()
     {
         var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Pedestrian,
+            PathPreferences = PathPreference.Slopes
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.True(node["avoid_stairs"]!.GetValue<bool>());
+        Assert.False(node.ContainsKey("avoid_slopes"));
+    }
+
+    [Fact]
+    public void BuildUserJson_PedestrianPrefersStairsAndSlopes_SendsNoPreference()
+    {
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Pedestrian,
+            PathPreferences = PathPreference.Stairs | PathPreference.Slopes
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.False(node.ContainsKey("avoid_stairs"));
+        Assert.False(node.ContainsKey("avoid_slopes"));
+    }
+
+    [Theory]
+    [InlineData(MobilityProfile.Wheelchair)]
+    [InlineData(MobilityProfile.Crutches)]
+    [InlineData(MobilityProfile.Blind)]
+    public void BuildUserJson_PathPreferencesOnOtherProfile_AreNotSent(MobilityProfile profile)
+    {
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = profile,
+            PathPreferences = PathPreference.Stairs
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.False(node.ContainsKey("avoid_stairs"));
+        Assert.False(node.ContainsKey("avoid_slopes"));
+    }
+
+    // Champs pas encore gérés par le moteur : volontairement non transmis (voir le TODO de BuildUserJson).
+    [Fact]
+    public void BuildUserJson_FieldsNotHandledByTheEngineYet_AreNotSent()
+    {
+        var wheelchair = new CreateItineraryRequest
         {
             Start = "a",
             End = "b",
             MobilityProfile = MobilityProfile.Wheelchair,
-            PathPreferences = PathPreference.Stairs,
-            WheelchairWidth = 0.7,
-            PhysicalStrength = PhysicalStrength.Medium,
-            IsAccompanied = false,
-            CanClimbStairs = true
+            PhysicalStrength = PhysicalStrength.High,
+            IsAccompanied = true
         };
-
-        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
-
-        var expectedKeys = new HashSet<string>
+        var pedestrian = new CreateItineraryRequest
         {
-            "mobility_profile", "path_preferences", "wheelchair_width",
-            "physical_strength", "is_accompanied", "can_climb_stairs"
+            Start = "a",
+            End = "b",
+            MobilityProfile = MobilityProfile.Pedestrian,
+            PathPreferences = PathPreference.WidePathways | PathPreference.LitStreets | PathPreference.Benches
         };
 
-        Assert.Equal(expectedKeys, node.Select(kvp => kvp.Key).ToHashSet());
+        var wheelchairNode = JsonNode.Parse(ItineraryService.BuildUserJson(wheelchair))!.AsObject();
+        var pedestrianNode = JsonNode.Parse(ItineraryService.BuildUserJson(pedestrian))!.AsObject();
+
+        Assert.Equal(new[] { "profile" }, wheelchairNode.Select(kvp => kvp.Key));
+        Assert.Equal(new[] { "profile" }, pedestrianNode.Select(kvp => kvp.Key));
+    }
+
+    [Fact]
+    public void ToEnginePreset_UnknownProfile_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => ItineraryService.ToEnginePreset((MobilityProfile)42));
     }
 }

@@ -106,6 +106,54 @@ public class ExceptionHandlingMiddlewareTests
         Assert.True((DateTime.UtcNow - log.OccurredAt).Duration() < TimeSpan.FromSeconds(5));
     }
 
+    // Régression #86 : la sauvegarde se fait en arrière-plan, souvent après la fin de la requête.
+    // On bloque la création du scope jusqu'à ce que le HttpContext soit libéré, comme en production.
+    [Fact]
+    public async Task InvokeAsync_Exception_PersistsErrorLogEvenAfterTheRequestHasCompleted()
+    {
+        var repository = new InMemoryErrorLogRepository();
+        var services = new ServiceCollection();
+        services.AddScoped<IErrorLogRepository>(_ => repository);
+        var provider = services.BuildServiceProvider();
+        using var gate = new ManualResetEventSlim(false);
+        var scopeFactory = new GatedScopeFactory(provider.GetRequiredService<IServiceScopeFactory>(), gate);
+        var middleware = new ExceptionHandlingMiddleware(
+            _ => throw new InvalidOperationException("boom"),
+            NullLogger<ExceptionHandlingMiddleware>.Instance,
+            scopeFactory);
+        var context = CreateContext(path: "/v0/itinerary", method: "POST");
+
+        await middleware.InvokeAsync(context);
+        var errorId = (await ReadBodyAsJsonAsync(context))["errorId"]!.GetValue<string>();
+        context.Uninitialize();
+        gate.Set();
+
+        var persisted = await Poll.UntilAsync(() => repository.Logs.Any(l => l.ErrorId == errorId));
+        Assert.True(persisted, "Expected the error log to be persisted after the request completed.");
+
+        var log = repository.Logs.Single(l => l.ErrorId == errorId);
+        Assert.Equal("/v0/itinerary", log.RequestPath);
+        Assert.Equal("POST", log.HttpMethod);
+    }
+
+    private sealed class GatedScopeFactory : IServiceScopeFactory
+    {
+        private readonly IServiceScopeFactory _inner;
+        private readonly ManualResetEventSlim _gate;
+
+        public GatedScopeFactory(IServiceScopeFactory inner, ManualResetEventSlim gate)
+        {
+            _inner = inner;
+            _gate = gate;
+        }
+
+        public IServiceScope CreateScope()
+        {
+            _gate.Wait(TimeSpan.FromSeconds(5));
+            return _inner.CreateScope();
+        }
+    }
+
     [Fact]
     public async Task InvokeAsync_RepositoryThrows_StillReturns500AndDoesNotEscape()
     {
