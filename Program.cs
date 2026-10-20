@@ -24,6 +24,16 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalWeb", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 // MongoDB configuration
 builder.Services.Configure<MongoDbSettings>(
@@ -63,6 +73,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("LocalWeb");
 
 // Custom middleware: validate access-token header on protected routes
 app.UseMiddleware<AccessTokenMiddleware>();
