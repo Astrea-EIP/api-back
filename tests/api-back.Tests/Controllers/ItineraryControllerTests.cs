@@ -23,7 +23,7 @@ public class ItineraryControllerTests
         service.Setup(s => s.ComputeItineraryAsync(request)).ReturnsAsync(expected);
         var controller = new ItineraryController(service.Object);
 
-        var result = await controller.PostItinerary("token", request);
+        var result = await controller.PostItinerary(request);
 
         var objectResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(201, objectResult.StatusCode);
