@@ -1,6 +1,7 @@
 using System.Net;
 using proto_back.Services;
 using proto_back.Tests.Support;
+using proto_back.Shared.Errors;
 
 namespace proto_back.Tests.Services;
 
@@ -90,11 +91,11 @@ public class NominatimGeocodingServiceTests
     }
 
     [Fact]
-    public async Task ResolvePointAsync_EmptyResultArray_ThrowsArgumentExceptionContainingInput()
+    public async Task ResolvePointAsync_EmptyResultArray_ThrowsAddressNotFoundContainingInput()
     {
         var (service, _) = CreateService(json: "[]");
 
-        var ex = await Assert.ThrowsAsync<ArgumentException>(
+        var ex = await Assert.ThrowsAsync<AddressNotFoundException>(
             () => service.ResolvePointAsync("Nowhereland"));
 
         Assert.Contains("Nowhereland", ex.Message);

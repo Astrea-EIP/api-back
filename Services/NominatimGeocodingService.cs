@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Json;
 using proto_back.DTOs.Responses;
 using proto_back.Interfaces.IServices;
+using proto_back.Shared.Errors;
 
 namespace proto_back.Services;
 
@@ -28,7 +29,7 @@ public class NominatimGeocodingService : IGeocodingService
 
         if (results is null || results.Count == 0)
         {
-            throw new ArgumentException(
+            throw new AddressNotFoundException(
                 $"Impossible de résoudre l'adresse '{input}' en coordonnées. "
                 + "Vérifiez l'orthographe ou utilisez le format 'lat,lng'.");
         }

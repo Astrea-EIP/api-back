@@ -32,7 +32,7 @@ This page is for frontend developers consuming `api-back`.
 | Method | Path | Purpose | Status codes |
 |---|---|---|---|
 | `GET` | `/v0/auth/anonymous` | Get an anonymous access token | `202`, `400`, `500` |
-| `POST` | `/v0/itinerary` | Compute an itinerary | `201`, `400`, `401`, `500` |
+| `POST` | `/v0/itinerary` | Compute an itinerary | `201`, `400`, `401`, `422`, `500` |
 
 ## Request fields (`POST /v0/itinerary`)
 
@@ -55,15 +55,17 @@ Swagger UI — this table is a quick reference, not the contract itself.
 
 ## Error format
 
-- `400` — `{ "error": "<message>" }`
+- `400` — `{ "error": "<message>" }`: invalid request body, or an address that cannot be found.
 - `401` — no body
+- `422` — `{ "error": "<message>" }`: a point is outside the area covered by the map (or too
+  far from any path), or no route matches the mobility profile. The message is written for
+  the end user (in French) and can be shown as is.
 - `500` — `{ "error": "<message>", "errorId": "<32 hex chars>" }`. Quote `errorId` to the
   backend team when reporting an issue: it identifies the entry in the `error_logs`
   MongoDB collection.
 
 ## Known limitations (current behavior)
 
-- An address that can't be geocoded returns `500`, not `400`.
 - A missing `mobility_profile` is currently accepted (defaults to Pedestrian) even
   though the schema marks it required.
 - Engine `v0.2.2` does not yet change the computed route based on the mobility
