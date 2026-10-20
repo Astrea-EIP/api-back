@@ -30,6 +30,11 @@ public class ExceptionHandlingMiddleware
 
             _logger.LogError(ex, "Unhandled exception caught. ErrorId: {ErrorId}", errorId);
 
+            // Capture the request data now: the background task below often runs after the
+            // response is sent, when the HttpContext has already been released.
+            var requestPath = context.Request.Path.Value ?? string.Empty;
+            var httpMethod = context.Request.Method;
+
             // Persist error log to MongoDB asynchronously (fire-and-forget)
             _ = Task.Run(async () =>
             {
@@ -43,8 +48,8 @@ public class ExceptionHandlingMiddleware
                         ErrorId = errorId,
                         Message = ex.Message,
                         StackTrace = ex.StackTrace,
-                        RequestPath = context.Request.Path.Value ?? string.Empty,
-                        HttpMethod = context.Request.Method,
+                        RequestPath = requestPath,
+                        HttpMethod = httpMethod,
                         OccurredAt = DateTime.UtcNow
                     };
 
