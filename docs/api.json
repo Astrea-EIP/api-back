@@ -31,7 +31,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "Error body returned for 400 Bad Request responses.",
+                  "description": "Error body returned for client errors (400 and 422), with a readable message.",
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
@@ -83,11 +83,11 @@
             }
           },
           "400": {
-            "description": "The request body is invalid.",
+            "description": "The request body is invalid, or an address cannot be found.",
             "content": {
               "application/json": {
                 "schema": {
-                  "description": "Error body returned for 400 Bad Request responses.",
+                  "description": "Error body returned for client errors (400 and 422), with a readable message.",
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
@@ -95,6 +95,17 @@
           },
           "401": {
             "description": "The access-token header is missing or invalid."
+          },
+          "422": {
+            "description": "A point is outside the area covered by the map, or no route matches the mobility profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Error body returned for client errors (400 and 422), with a readable message.",
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "500": {
             "description": "An unexpected error occurred.",
@@ -191,7 +202,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "Error body returned for 400 Bad Request responses."
+        "description": "Error body returned for client errors (400 and 422), with a readable message."
       },
       "ItineraryResponse": {
         "required": [
