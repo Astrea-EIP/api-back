@@ -265,6 +265,46 @@ public class ApiEndToEndTests
 
         var auth = paths["/v0/auth/anonymous"]!["get"]!["responses"]!.AsObject();
         Assert.Equal(new HashSet<string> { "202", "400", "500" }, auth.Select(kvp => kvp.Key).ToHashSet());
+
+        var wheelchairs = paths["/v0/wheelchairs"]!["get"]!["responses"]!.AsObject();
+        Assert.Equal(new HashSet<string> { "200", "401", "500" }, wheelchairs.Select(kvp => kvp.Key).ToHashSet());
+    }
+
+    [Fact]
+    public async Task GetWheelchairs_NoHeader_Returns401WithEmptyBody()
+    {
+        using var ctx = ApiTestContext.Create();
+
+        var response = await ctx.Client.GetAsync("/v0/wheelchairs");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Empty(await response.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task GetWheelchairs_ValidToken_Returns200WithSnakeCaseCatalogInMeters()
+    {
+        using var ctx = ApiTestContext.Create();
+        var token = await ctx.Client.GetAnonymousTokenAsync();
+        ctx.Client.DefaultRequestHeaders.Add("access-token", token);
+
+        var response = await ctx.Client.GetAsync("/v0/wheelchairs");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+        Assert.Equal(new HashSet<string> { "categories", "accessibility_standards" }, body.Select(kvp => kvp.Key).ToHashSet());
+
+        var manual = body["categories"]![0]!;
+        Assert.Equal("manual", manual["id"]!.GetValue<string>());
+        var model = manual["models"]![0]!.AsObject();
+        Assert.Equal(
+            new HashSet<string> { "id", "brand", "range", "width", "length", "recommended_wheelchair_width" },
+            model.Select(kvp => kvp.Key).ToHashSet());
+        Assert.Equal(0.7, model["recommended_wheelchair_width"]!.GetValue<double>());
+
+        var standards = body["accessibility_standards"]!;
+        Assert.Equal(0.8, standards["min_passage_width"]!.GetValue<double>());
+        Assert.Equal(1.5, standards["turning_circle_diameter"]!.GetValue<double>());
     }
 
     // --- Known contract violations (docs/api.json vs. actual behavior) ---
