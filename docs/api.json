@@ -125,10 +125,82 @@
           }
         ]
       }
+    },
+    "/v0/wheelchairs": {
+      "get": {
+        "tags": [
+          "Wheelchairs"
+        ],
+        "summary": "List the standard wheelchairs and the accessibility reference values.",
+        "description": "Requires the `access-token` header (see `GET /v0/auth/anonymous`).\nUse it to build the wheelchair selector, then send the chosen model's\n`recommended_wheelchair_width` as `wheelchair_width` to `POST /v0/itinerary`.\nAll dimensions are in meters.",
+        "operationId": "listWheelchairs",
+        "responses": {
+          "200": {
+            "description": "The wheelchair catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Response body for `GET /v0/wheelchairs`.",
+                  "$ref": "#/components/schemas/WheelchairCatalogResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access-token header is missing or invalid."
+          },
+          "500": {
+            "description": "An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Error body returned for 500 Internal Server Error responses.",
+                  "$ref": "#/components/schemas/ServerErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessToken": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AccessibilityStandardsResponse": {
+        "required": [
+          "min_passage_width",
+          "recommended_corridor_width",
+          "turning_circle_diameter"
+        ],
+        "type": "object",
+        "properties": {
+          "min_passage_width": {
+            "type": "number",
+            "description": "Minimum free passage width, in meters.",
+            "format": "double",
+            "example": 0.8
+          },
+          "recommended_corridor_width": {
+            "type": "number",
+            "description": "Recommended free passage width in corridors, in meters.",
+            "format": "double",
+            "example": 0.9
+          },
+          "turning_circle_diameter": {
+            "type": "number",
+            "description": "Diameter of the circle needed to turn around, in meters.",
+            "format": "double",
+            "example": 1.5
+          }
+        },
+        "additionalProperties": false,
+        "description": "Spatial accessibility reference values, in meters."
+      },
       "CreateItineraryRequest": {
         "required": [
           "end",
@@ -189,6 +261,29 @@
         },
         "additionalProperties": false,
         "description": "Request body for `POST /v0/itinerary`."
+      },
+      "DimensionRangeResponse": {
+        "required": [
+          "max",
+          "min"
+        ],
+        "type": "object",
+        "properties": {
+          "min": {
+            "type": "number",
+            "description": "Smallest value, in meters.",
+            "format": "double",
+            "example": 0.55
+          },
+          "max": {
+            "type": "number",
+            "description": "Largest value, in meters.",
+            "format": "double",
+            "example": 0.7
+          }
+        },
+        "additionalProperties": false,
+        "description": "A dimension range, in meters."
       },
       "ErrorResponse": {
         "required": [
@@ -316,6 +411,103 @@
         },
         "additionalProperties": false,
         "description": "Response body for `GET /v0/auth/anonymous`."
+      },
+      "WheelchairCatalogResponse": {
+        "required": [
+          "accessibility_standards",
+          "categories"
+        ],
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "description": "A wheelchair category and its standard models.",
+              "$ref": "#/components/schemas/WheelchairCategoryResponse"
+            },
+            "description": "The wheelchair categories (manual, electric), each with its standard models."
+          },
+          "accessibility_standards": {
+            "description": "Reference values for designing navigable routes and spaces.",
+            "$ref": "#/components/schemas/AccessibilityStandardsResponse"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Response body for `GET /v0/wheelchairs`."
+      },
+      "WheelchairCategoryResponse": {
+        "required": [
+          "id",
+          "models",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier of the category, to use as a translation key on the client.",
+            "example": "manual"
+          },
+          "name": {
+            "type": "string",
+            "description": "English display name of the category.",
+            "example": "Manual wheelchairs"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "description": "A standard wheelchair model (brand and range) with its overall dimensions.",
+              "$ref": "#/components/schemas/WheelchairModelResponse"
+            },
+            "description": "The standard models of this category."
+          }
+        },
+        "additionalProperties": false,
+        "description": "A wheelchair category and its standard models."
+      },
+      "WheelchairModelResponse": {
+        "required": [
+          "brand",
+          "id",
+          "length",
+          "range",
+          "recommended_wheelchair_width",
+          "width"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier of the model. Store this, not the label, to remember the user's choice.",
+            "example": "invacare-action-kuschall"
+          },
+          "brand": {
+            "type": "string",
+            "description": "Manufacturer.",
+            "example": "Invacare"
+          },
+          "range": {
+            "type": "string",
+            "description": "Product ranges covered by this entry.",
+            "example": "Action, Küschall"
+          },
+          "width": {
+            "description": "Overall width range, in meters.",
+            "$ref": "#/components/schemas/DimensionRangeResponse"
+          },
+          "length": {
+            "description": "Overall length range, in meters. Informational: the engine does not use it yet.",
+            "$ref": "#/components/schemas/DimensionRangeResponse"
+          },
+          "recommended_wheelchair_width": {
+            "type": "number",
+            "description": "Width in meters to send as `wheelchair_width` to `POST /v0/itinerary`. It is the widest chair of the range, so the returned path fits every chair of the range.",
+            "format": "double",
+            "example": 0.7
+          }
+        },
+        "additionalProperties": false,
+        "description": "A standard wheelchair model (brand and range) with its overall dimensions."
       }
     },
     "securitySchemes": {
@@ -335,6 +527,10 @@
     {
       "name": "Itinerary",
       "description": "Computes accessibility-aware itineraries."
+    },
+    {
+      "name": "Wheelchairs",
+      "description": "Exposes the catalogue of standard wheelchairs."
     }
   ]
 }
