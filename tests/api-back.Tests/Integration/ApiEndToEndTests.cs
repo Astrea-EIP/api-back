@@ -167,12 +167,7 @@ public class ApiEndToEndTests
         Assert.Equal(new HashSet<string> { "error", "errorId" }, body.Select(kvp => kvp.Key).ToHashSet());
     }
 
-    [Fact(Skip = "Flaky due to a pre-existing race in ExceptionHandlingMiddleware: its fire-and-forget " +
-                 "Task.Run reads context.Request.Path after the request pipeline may have disposed " +
-                 "HttpContext features, throwing ObjectDisposedException before the Mongo write is " +
-                 "attempted. Reproduces intermittently under load (passes in isolation, fails when the " +
-                 "full suite runs in parallel). See Findings in the PR description; this is an " +
-                 "application bug, out of scope for this test-setup PR.")]
+    [Fact]
     public async Task PostItinerary_GraphHopperFails_ShouldPersistErrorLogWithRequestContext()
     {
         using var ctx = ApiTestContext.Create();
@@ -217,6 +212,43 @@ public class ApiEndToEndTests
         Assert.Contains("GraphHopper:BaseUrl", body["error"]!.GetValue<string>());
     }
 
+    public static IEnumerable<object[]> GraphHopperClientErrors()
+    {
+        yield return new object[] { "start out of bounds", GraphHopperErrorBodies.PointOutOfBounds(0) };
+        yield return new object[] { "end not found", GraphHopperErrorBodies.PointNotFound(1) };
+        yield return new object[] { "no route", GraphHopperErrorBodies.ConnectionNotFound };
+    }
+
+    [Theory]
+    [MemberData(nameof(GraphHopperClientErrors))]
+    public async Task PostItinerary_GraphHopperClientError_Returns422WithReadableErrorAndNoCrashLog(string _, string graphHopperBody)
+    {
+        using var ctx = ApiTestContext.Create();
+        ctx.GraphHopper.Server
+            .Given(Request.Create().WithPath("/route").UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(400)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody(graphHopperBody));
+
+        var token = await ctx.Client.GetAnonymousTokenAsync();
+        ctx.Client.DefaultRequestHeaders.Add("access-token", token);
+
+        var response = await ctx.Client.PostAsJsonAsync("/v0/itinerary", new
+        {
+            start = "48.8566,2.3522",
+            end = "48.8606,2.3376",
+            mobility_profile = 1
+        });
+
+        Assert.Equal((HttpStatusCode)422, response.StatusCode);
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+        Assert.Equal(new[] { "error" }, body.Select(kvp => kvp.Key));
+        Assert.DoesNotContain("graphhopper", body["error"]!.GetValue<string>(), StringComparison.OrdinalIgnoreCase);
+        await Task.Delay(200);
+        Assert.Empty(ctx.Factory.ErrorLogRepository.Logs);
+    }
+
     [Fact]
     public async Task GetSwaggerDocument_NoToken_Returns200WithExpectedOperationsAndStatusCodes()
     {
@@ -229,7 +261,7 @@ public class ApiEndToEndTests
         var paths = doc["paths"]!.AsObject();
 
         var itinerary = paths["/v0/itinerary"]!["post"]!["responses"]!.AsObject();
-        Assert.Equal(new HashSet<string> { "201", "400", "401", "500" }, itinerary.Select(kvp => kvp.Key).ToHashSet());
+        Assert.Equal(new HashSet<string> { "201", "400", "401", "422", "500" }, itinerary.Select(kvp => kvp.Key).ToHashSet());
 
         var auth = paths["/v0/auth/anonymous"]!["get"]!["responses"]!.AsObject();
         Assert.Equal(new HashSet<string> { "202", "400", "500" }, auth.Select(kvp => kvp.Key).ToHashSet());
@@ -239,9 +271,7 @@ public class ApiEndToEndTests
     // Written for the CORRECT behavior and skipped, per the issue's instructions:
     // fixing the application is out of scope for this test-setup PR.
 
-    [Fact(Skip = "Contract violation: an unresolvable address should be a 400 (bad input), " +
-                 "but NominatimGeocodingService throws ArgumentException which ExceptionHandlingMiddleware " +
-                 "maps to a 500. See Findings in the PR description.")]
+    [Fact]
     public async Task PostItinerary_UnresolvableAddress_ShouldReturn400()
     {
         using var ctx = ApiTestContext.Create();
@@ -260,6 +290,9 @@ public class ApiEndToEndTests
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+        Assert.Contains("Nowhereland", body["error"]!.GetValue<string>());
+        Assert.Empty(ctx.Factory.ErrorLogRepository.Logs);
     }
 
     [Fact(Skip = "Contract violation: docs/api.json marks mobility_profile as required, so a missing " +

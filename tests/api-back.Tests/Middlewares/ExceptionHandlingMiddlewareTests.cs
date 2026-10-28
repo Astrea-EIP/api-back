@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using proto_back.Interfaces.IRepositories;
 using proto_back.Middlewares;
+using proto_back.Shared.Errors;
 using proto_back.Tests.Support;
 
 namespace proto_back.Tests.Middlewares;
@@ -104,6 +105,89 @@ public class ExceptionHandlingMiddlewareTests
         Assert.Equal("/v0/itinerary", log.RequestPath);
         Assert.Equal("POST", log.HttpMethod);
         Assert.True((DateTime.UtcNow - log.OccurredAt).Duration() < TimeSpan.FromSeconds(5));
+    }
+
+    // Régression #86 : la sauvegarde se fait en arrière-plan, souvent après la fin de la requête.
+    // On bloque la création du scope jusqu'à ce que le HttpContext soit libéré, comme en production.
+    [Fact]
+    public async Task InvokeAsync_Exception_PersistsErrorLogEvenAfterTheRequestHasCompleted()
+    {
+        var repository = new InMemoryErrorLogRepository();
+        var services = new ServiceCollection();
+        services.AddScoped<IErrorLogRepository>(_ => repository);
+        var provider = services.BuildServiceProvider();
+        using var gate = new ManualResetEventSlim(false);
+        var scopeFactory = new GatedScopeFactory(provider.GetRequiredService<IServiceScopeFactory>(), gate);
+        var middleware = new ExceptionHandlingMiddleware(
+            _ => throw new InvalidOperationException("boom"),
+            NullLogger<ExceptionHandlingMiddleware>.Instance,
+            scopeFactory);
+        var context = CreateContext(path: "/v0/itinerary", method: "POST");
+
+        await middleware.InvokeAsync(context);
+        var errorId = (await ReadBodyAsJsonAsync(context))["errorId"]!.GetValue<string>();
+        context.Uninitialize();
+        gate.Set();
+
+        var persisted = await Poll.UntilAsync(() => repository.Logs.Any(l => l.ErrorId == errorId));
+        Assert.True(persisted, "Expected the error log to be persisted after the request completed.");
+
+        var log = repository.Logs.Single(l => l.ErrorId == errorId);
+        Assert.Equal("/v0/itinerary", log.RequestPath);
+        Assert.Equal("POST", log.HttpMethod);
+    }
+
+    private sealed class GatedScopeFactory : IServiceScopeFactory
+    {
+        private readonly IServiceScopeFactory _inner;
+        private readonly ManualResetEventSlim _gate;
+
+        public GatedScopeFactory(IServiceScopeFactory inner, ManualResetEventSlim gate)
+        {
+            _inner = inner;
+            _gate = gate;
+        }
+
+        public IServiceScope CreateScope()
+        {
+            _gate.Wait(TimeSpan.FromSeconds(5));
+            return _inner.CreateScope();
+        }
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ApiException_ReturnsItsStatusAndReadableMessage()
+    {
+        var context = CreateContext();
+        var (middleware, _) = CreateMiddleware(_ => throw new TestApiException(422, "Aucun trajet trouvé."));
+
+        await middleware.InvokeAsync(context);
+        var body = await ReadBodyAsJsonAsync(context);
+
+        Assert.Equal(422, context.Response.StatusCode);
+        Assert.Equal("application/json", context.Response.ContentType);
+        Assert.Equal(new[] { "error" }, body.Select(kvp => kvp.Key));
+        Assert.Equal("Aucun trajet trouvé.", body["error"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ApiException_IsNotStoredAsACrash()
+    {
+        var context = CreateContext();
+        var (middleware, repository) = CreateMiddleware(_ => throw new TestApiException(400, "Adresse introuvable."));
+
+        await middleware.InvokeAsync(context);
+        await Task.Delay(200);
+
+        Assert.Empty(repository.Logs);
+    }
+
+    private sealed class TestApiException : ApiException
+    {
+        public TestApiException(int statusCode, string message)
+            : base(statusCode, message)
+        {
+        }
     }
 
     [Fact]
