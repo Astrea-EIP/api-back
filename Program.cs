@@ -94,6 +94,7 @@ builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>((sp
     client.DefaultRequestHeaders.Add("User-Agent", "api-back/1.0 (contact: backend-team)");
 });
 builder.Services.AddScoped<IItineraryService, ItineraryService>();
+builder.Services.AddSingleton<IWheelchairService, WheelchairService>();
 
 var app = builder.Build();
 

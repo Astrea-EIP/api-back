@@ -33,6 +33,7 @@ This page is for frontend developers consuming `api-back`.
 |---|---|---|---|
 | `GET` | `/v0/auth/anonymous` | Get an anonymous access token | `202`, `400`, `500` |
 | `POST` | `/v0/itinerary` | Compute an itinerary | `201`, `400`, `401`, `422`, `500` |
+| `GET` | `/v0/wheelchairs` | List the standard wheelchairs and accessibility reference values | `200`, `401`, `500` |
 
 ## Request fields (`POST /v0/itinerary`)
 
@@ -52,6 +53,23 @@ This page is for frontend developers consuming `api-back`.
 
 Full field descriptions, examples, and the exact schema are in `docs/api.json` /
 Swagger UI — this table is a quick reference, not the contract itself.
+
+## Wheelchair catalogue (`GET /v0/wheelchairs`)
+
+Build the wheelchair selector from this endpoint rather than hardcoding the list: models
+are added or corrected in `api-back` without a new app release.
+
+- `categories[]`: `id` (`manual` or `electric`, use it as a translation key), `name`
+  (English), `models[]`.
+- `models[]`: `id` (stable, store it to remember the user's choice), `brand`, `range`,
+  `width` and `length` as `{ "min", "max" }`, and `recommended_wheelchair_width`.
+- `accessibility_standards`: `min_passage_width` (0.8), `recommended_corridor_width`
+  (0.9), `turning_circle_diameter` (1.5).
+
+All dimensions are in **metres**, like `wheelchair_width`. Send the chosen model's
+`recommended_wheelchair_width` (the widest chair of its range) as `wheelchair_width` to
+`POST /v0/itinerary`. Only the width affects routing today: the engine does not use
+`length` or the accessibility standards yet.
 
 ## Error format
 
