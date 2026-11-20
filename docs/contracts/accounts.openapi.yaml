@@ -1,0 +1,407 @@
+openapi: 3.1.0
+info:
+  title: Astrea API - accounts (contract draft)
+  version: v0
+  description: >-
+    Contract for user accounts, authentication and the mobility profile, agreed before the
+    implementation (issues #110, #111, #46 and #50). Once these endpoints exist in the code,
+    they are generated into docs/api.json like every other endpoint, and this file is removed.
+    See docs/contracts/accounts.md for the decisions and the mapping from the web and mobile
+    models.
+  license:
+    name: MIT
+    identifier: MIT
+tags:
+  - name: Auth
+    description: Account creation and sign-in.
+  - name: Users
+    description: The signed-in user's account and mobility profile.
+paths:
+  /v0/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Create an account and sign in.
+      description: >-
+        Public endpoint: no access-token header is required. The consent to store the
+        location and the mobility profile is mandatory (GDPR). The returned token is a user
+        token, sent as the access-token header like the anonymous token.
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: The account was created and the user is signed in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: A field is missing or invalid, or the consent was not given.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: An account already exists with this email address.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /v0/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Sign in with an email address and a password.
+      description: Public endpoint, no access-token header is required.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: The user is signed in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: A field is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: >-
+            The email address or the password is wrong. The message does not say which one,
+            so that it cannot be used to find out whether an email address has an account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /v0/users/me:
+    get:
+      tags:
+        - Users
+      summary: Get the signed-in user's account.
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: The account of the user the token belongs to.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags:
+        - Users
+      summary: Delete the signed-in user's account and mobility profile.
+      description: >-
+        Right to erasure (GDPR): the account and the mobility profile are deleted for good.
+        The user token stops working.
+      operationId: deleteCurrentUser
+      responses:
+        '204':
+          description: The account and the mobility profile were deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /v0/users/me/profile:
+    get:
+      tags:
+        - Users
+      summary: Get the signed-in user's mobility profile.
+      operationId: getCurrentUserProfile
+      responses:
+        '200':
+          description: The saved mobility profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: The user has not saved a mobility profile yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    put:
+      tags:
+        - Users
+      summary: Create or replace the signed-in user's mobility profile.
+      description: >-
+        The whole profile is replaced. Fields that do not apply to the chosen
+        mobility_profile are ignored and not stored, with the same rules as
+        POST /v0/itinerary.
+      operationId: saveCurrentUserProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+      responses:
+        '200':
+          description: The profile was saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '400':
+          description: A field is invalid, or the consent was not given.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+security:
+  - accessToken: []
+components:
+  securitySchemes:
+    accessToken:
+      type: apiKey
+      in: header
+      name: access-token
+      description: >-
+        User token returned by POST /v0/auth/register or POST /v0/auth/login. The
+        /v0/users/me routes refuse the anonymous token from GET /v0/auth/anonymous with a 401.
+  responses:
+    Unauthorized:
+      description: The access-token header is missing, invalid, expired, or is an anonymous token.
+    ServerError:
+      description: An unexpected error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ServerErrorResponse'
+  schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - email
+        - password
+        - birth_date
+        - consent
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Name shown in the apps.
+          example: Camille
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          description: Email address used to sign in. Compared without case.
+          example: camille@example.com
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: At least 8 characters. Stored as a hash, never in clear text.
+          example: correct-horse-battery
+        birth_date:
+          type: string
+          format: date
+          description: Date of birth, ISO format YYYY-MM-DD. Must be in the past.
+          example: '1998-04-12'
+        consent:
+          type: boolean
+          const: true
+          description: >-
+            Consent to store the location and the mobility profile (GDPR). Must be true,
+            otherwise the request is refused with a 400.
+          example: true
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: camille@example.com
+        password:
+          type: string
+          example: correct-horse-battery
+    TokenResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - accessToken
+      description: >-
+        Same shape as the response of GET /v0/auth/anonymous, so the apps keep a single
+        parser. The expiry is in the exp claim of the token.
+      properties:
+        accessToken:
+          type: string
+          description: User token (JWT). Send it as the access-token header on every other request.
+    UserResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - email
+        - birth_date
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Stable identifier of the account.
+          example: 6740f1c2a9e3b54d2c1f0a77
+        name:
+          type: string
+          example: Camille
+        email:
+          type: string
+          format: email
+          example: camille@example.com
+        birth_date:
+          type: string
+          format: date
+          example: '1998-04-12'
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-11-21T10:00:00Z'
+    UserProfileRequest:
+      type: object
+      required:
+        - consent
+        - mobility_profile
+      description: >-
+        Mobility profile. The fields are the ones of POST /v0/itinerary, with the same names,
+        values and rules, so a saved profile can be sent as is to compute an itinerary.
+      properties:
+        consent:
+          type: boolean
+          const: true
+          description: Consent to store the mobility profile (GDPR). Must be true.
+          example: true
+        app_profile:
+          type: string
+          maxLength: 40
+          description: >-
+            Free value stored for the apps and never used by the API, to restore the choice
+            made in the form when several app choices share the same mobility_profile
+            (for example stroller and pedestrian are both 0).
+          example: stroller
+        mobility_profile:
+          $ref: '#/components/schemas/MobilityProfile'
+        wheelchair_model_id:
+          type: string
+          description: >-
+            Id of the chosen model in GET /v0/wheelchairs. Wheelchair profile only.
+            Optional: a user can enter a width without choosing a model.
+          example: tilite-active
+        wheelchair_width:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          maximum: 2
+          description: >-
+            Wheelchair width in meters. Wheelchair profile only. When a model is chosen,
+            send its recommended_wheelchair_width.
+          example: 0.7
+        physical_strength:
+          $ref: '#/components/schemas/PhysicalStrength'
+        is_accompanied:
+          type: boolean
+          description: Wheelchair and Blind profiles only.
+        can_climb_stairs:
+          type: boolean
+          description: Crutches profile only.
+        path_preferences:
+          $ref: '#/components/schemas/PathPreference'
+    UserProfileResponse:
+      allOf:
+        - $ref: '#/components/schemas/UserProfileRequest'
+        - type: object
+          required:
+            - consent_given_at
+            - updated_at
+          properties:
+            consent_given_at:
+              type: string
+              format: date-time
+              description: When the user first gave the consent to store the profile.
+              example: '2026-11-21T10:00:00Z'
+            updated_at:
+              type: string
+              format: date-time
+              example: '2026-11-21T10:05:00Z'
+    MobilityProfile:
+      type: integer
+      enum:
+        - 0
+        - 1
+        - 2
+        - 3
+      description: 0 = Pedestrian, 1 = Wheelchair, 2 = Crutches, 3 = Blind. Same values as POST /v0/itinerary.
+      example: 1
+    PhysicalStrength:
+      type: integer
+      enum:
+        - 0
+        - 1
+        - 2
+      description: 0 = Low, 1 = Medium, 2 = High. Wheelchair profile only.
+      example: 1
+    PathPreference:
+      type: integer
+      minimum: 0
+      maximum: 31
+      description: >-
+        Bitmask, Pedestrian profile only. Stairs = 1, Slopes = 2, WidePathways = 4,
+        LitStreets = 8, Benches = 16. Example: LitStreets and Benches = 24.
+      example: 24
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable message.
+    ServerErrorResponse:
+      type: object
+      required:
+        - error
+        - errorId
+      properties:
+        error:
+          type: string
+        errorId:
+          type: string
+          description: Id of the error log entry, to give to the backend team.
