@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Moq;
 using proto_back.Interfaces.IServices;
 using proto_back.Middlewares;
+using proto_back.Shared.Auth;
 
 namespace proto_back.Tests.Middlewares;
 
@@ -22,6 +24,9 @@ public class AccessTokenMiddlewareTests
 
         return (context, new Mock<IAuthService>(), new bool[1]);
     }
+
+    private static ClaimsPrincipal AnonymousPrincipal() =>
+        new(new ClaimsIdentity(new[] { new Claim(AccessTokenClaims.TokenType, AccessTokenClaims.Anonymous) }, "access-token"));
 
     private static AccessTokenMiddleware WithNext(bool[] nextCalled)
     {
@@ -104,26 +109,44 @@ public class AccessTokenMiddlewareTests
     public async Task InvokeAsync_InvalidToken_Returns401AndValidatesTheGivenToken()
     {
         var (context, authService, nextCalled) = CreateContext("/v0/itinerary", accessToken: "bad-token");
-        authService.Setup(a => a.ValidateToken("bad-token")).Returns(false);
+        authService.Setup(a => a.ValidateTokenAsync("bad-token")).ReturnsAsync((ClaimsPrincipal?)null);
         var middleware = WithNext(nextCalled);
 
         await middleware.InvokeAsync(context, authService.Object);
 
         Assert.False(nextCalled[0]);
         Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
-        authService.Verify(a => a.ValidateToken("bad-token"), Times.Once);
+        authService.Verify(a => a.ValidateTokenAsync("bad-token"), Times.Once);
     }
 
     [Fact]
     public async Task InvokeAsync_ValidToken_CallsNext()
     {
         var (context, authService, nextCalled) = CreateContext("/v0/itinerary", accessToken: "good-token");
-        authService.Setup(a => a.ValidateToken("good-token")).Returns(true);
+        authService.Setup(a => a.ValidateTokenAsync("good-token")).ReturnsAsync(AnonymousPrincipal());
         var middleware = WithNext(nextCalled);
 
         await middleware.InvokeAsync(context, authService.Object);
 
         Assert.True(nextCalled[0]);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ValidUserToken_ExposesTheTokenClaimsAsTheRequestUser()
+    {
+        var (context, authService, nextCalled) = CreateContext("/v0/itinerary", accessToken: "user-token");
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(AccessTokenClaims.TokenType, AccessTokenClaims.User),
+            new Claim(AccessTokenClaims.Subject, "user-42")
+        }, "access-token"));
+        authService.Setup(a => a.ValidateTokenAsync("user-token")).ReturnsAsync(principal);
+        var middleware = WithNext(nextCalled);
+
+        await middleware.InvokeAsync(context, authService.Object);
+
+        Assert.True(nextCalled[0]);
+        Assert.Equal("user-42", context.User.GetUserId());
     }
 
     [Fact]
@@ -135,7 +158,7 @@ public class AccessTokenMiddlewareTests
         context.Request.Headers["Access-Token"] = "good-token";
 
         var authService = new Mock<IAuthService>();
-        authService.Setup(a => a.ValidateToken("good-token")).Returns(true);
+        authService.Setup(a => a.ValidateTokenAsync("good-token")).ReturnsAsync(AnonymousPrincipal());
         var nextCalled = new bool[1];
         var middleware = WithNext(nextCalled);
 
