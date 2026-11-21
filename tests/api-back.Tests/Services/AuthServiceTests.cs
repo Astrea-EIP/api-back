@@ -1,81 +1,165 @@
-using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
+using proto_back.Configurations;
 using proto_back.Services;
+using proto_back.Shared.Auth;
 
 namespace proto_back.Tests.Services;
 
 [Trait("Category", "Unit")]
 public class AuthServiceTests
 {
-    private static readonly Regex TokenFormat = new("^[0-9a-f]{32}$");
+    private const string SigningKey = "a-unit-test-signing-key-of-at-least-32-chars";
+
+    private static AuthService CreateService(
+        string? signingKey = SigningKey,
+        TimeProvider? timeProvider = null,
+        Action<JwtSettings>? configure = null)
+    {
+        var settings = new JwtSettings { SigningKey = signingKey };
+        configure?.Invoke(settings);
+        return new AuthService(Options.Create(settings), NullLogger<AuthService>.Instance, timeProvider);
+    }
 
     [Fact]
-    public void GenerateAnonymousToken_Always_ReturnsLowercase32HexCharacters()
+    public async Task GenerateAnonymousToken_Validated_IsAnonymousWithoutUserId()
     {
-        var service = new AuthService();
+        var service = CreateService();
 
-        var token = service.GenerateAnonymousToken();
+        var principal = await service.ValidateTokenAsync(service.GenerateAnonymousToken());
 
-        Assert.Matches(TokenFormat, token);
+        Assert.NotNull(principal);
+        Assert.Equal(AccessTokenClaims.Anonymous, principal!.FindFirst(AccessTokenClaims.TokenType)?.Value);
+        Assert.False(principal.IsUserToken());
+        Assert.Null(principal.GetUserId());
+    }
+
+    [Fact]
+    public async Task GenerateUserToken_Validated_IsUserTokenWithTheUserId()
+    {
+        var service = CreateService();
+
+        var principal = await service.ValidateTokenAsync(service.GenerateUserToken("user-42"));
+
+        Assert.NotNull(principal);
+        Assert.True(principal!.IsUserToken());
+        Assert.Equal("user-42", principal.GetUserId());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GenerateUserToken_BlankUserId_Throws(string userId)
+    {
+        var service = CreateService();
+
+        Assert.ThrowsAny<ArgumentException>(() => service.GenerateUserToken(userId));
     }
 
     [Fact]
     public void GenerateAnonymousToken_CalledTwice_ReturnsDifferentTokens()
     {
-        var service = new AuthService();
+        var service = CreateService();
 
-        var first = service.GenerateAnonymousToken();
-        var second = service.GenerateAnonymousToken();
-
-        Assert.NotEqual(first, second);
+        Assert.NotEqual(service.GenerateAnonymousToken(), service.GenerateAnonymousToken());
     }
 
     [Fact]
-    public void ValidateToken_GeneratedToken_ReturnsTrue()
+    public async Task ValidateTokenAsync_TokenFromAnotherInstanceWithSameKey_IsValid()
     {
-        var service = new AuthService();
-        var token = service.GenerateAnonymousToken();
+        var token = CreateService().GenerateAnonymousToken();
 
-        var isValid = service.ValidateToken(token);
+        var principal = await CreateService().ValidateTokenAsync(token);
 
-        Assert.True(isValid);
+        Assert.NotNull(principal);
     }
 
     [Fact]
-    public void ValidateToken_UnknownToken_ReturnsFalse()
+    public async Task ValidateTokenAsync_TokenSignedWithAnotherKey_ReturnsNull()
     {
-        var service = new AuthService();
+        var token = CreateService(signingKey: "another-unit-test-signing-key-of-32-chars").GenerateAnonymousToken();
 
-        var isValid = service.ValidateToken(Guid.NewGuid().ToString("N"));
+        var principal = await CreateService().ValidateTokenAsync(token);
 
-        Assert.False(isValid);
+        Assert.Null(principal);
     }
 
     [Fact]
-    public void ValidateToken_EmptyToken_ReturnsFalse()
+    public async Task ValidateTokenAsync_NoSigningKeyConfigured_TokensOnlyValidForTheSameInstance()
     {
-        var service = new AuthService();
-
-        var isValid = service.ValidateToken(string.Empty);
-
-        Assert.False(isValid);
-    }
-
-    [Fact]
-    public void ValidateToken_TokenFromAnotherInstance_ReturnsFalse()
-    {
-        var first = new AuthService();
-        var second = new AuthService();
+        var first = CreateService(signingKey: null);
+        var second = CreateService(signingKey: null);
         var token = first.GenerateAnonymousToken();
 
-        var isValid = second.ValidateToken(token);
-
-        Assert.False(isValid);
+        Assert.NotNull(await first.ValidateTokenAsync(token));
+        Assert.Null(await second.ValidateTokenAsync(token));
     }
 
     [Fact]
-    public void GenerateAnonymousToken_OneThousandTokensInParallel_AreAllDistinctAndValid()
+    public void Constructor_SigningKeyShorterThan32Characters_Throws()
     {
-        var service = new AuthService();
+        Assert.Throws<InvalidOperationException>(() => CreateService(signingKey: "too-short"));
+    }
+
+    [Fact]
+    public async Task ValidateTokenAsync_ExpiredAnonymousToken_ReturnsNull()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var service = CreateService(timeProvider: time);
+        var token = service.GenerateAnonymousToken();
+
+        time.Advance(TimeSpan.FromMinutes(new JwtSettings().AnonymousTokenLifetimeMinutes + 1));
+
+        Assert.Null(await service.ValidateTokenAsync(token));
+    }
+
+    [Fact]
+    public async Task ValidateTokenAsync_UserTokenBeforeExpiry_IsValid()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var service = CreateService(timeProvider: time);
+        var token = service.GenerateUserToken("user-42");
+
+        time.Advance(TimeSpan.FromMinutes(new JwtSettings().UserTokenLifetimeMinutes - 1));
+
+        Assert.NotNull(await service.ValidateTokenAsync(token));
+    }
+
+    [Fact]
+    public async Task ValidateTokenAsync_OtherAudience_ReturnsNull()
+    {
+        var token = CreateService(configure: s => s.Audience = "someone-else").GenerateAnonymousToken();
+
+        Assert.Null(await CreateService().ValidateTokenAsync(token));
+    }
+
+    [Fact]
+    public async Task ValidateTokenAsync_TamperedPayload_ReturnsNull()
+    {
+        var service = CreateService();
+        var parts = service.GenerateUserToken("user-42").Split('.');
+        var otherPayload = service.GenerateUserToken("user-43").Split('.')[1];
+
+        var principal = await service.ValidateTokenAsync($"{parts[0]}.{otherPayload}.{parts[2]}");
+
+        Assert.Null(principal);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("not-a-jwt")]
+    [InlineData("0123456789abcdef0123456789abcdef")]
+    public async Task ValidateTokenAsync_NotAValidToken_ReturnsNull(string token)
+    {
+        Assert.Null(await CreateService().ValidateTokenAsync(token));
+    }
+
+    [Fact]
+    public async Task GenerateAnonymousToken_OneThousandTokensInParallel_AreAllDistinctAndValid()
+    {
+        var service = CreateService();
 
         var tokens = Enumerable.Range(0, 1000)
             .AsParallel()
@@ -83,6 +167,9 @@ public class AuthServiceTests
             .ToList();
 
         Assert.Equal(1000, tokens.Distinct().Count());
-        Assert.All(tokens, token => Assert.True(service.ValidateToken(token)));
+        foreach (var token in tokens)
+        {
+            Assert.NotNull(await service.ValidateTokenAsync(token));
+        }
     }
 }
