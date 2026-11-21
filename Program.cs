@@ -56,7 +56,7 @@ builder.Services.AddSwaggerGen(options =>
         Type = SecuritySchemeType.ApiKey,
         In = ParameterLocation.Header,
         Name = "access-token",
-        Description = "Anonymous access token obtained from GET /v0/auth/anonymous. " +
+        Description = "Access token (JWT) obtained from GET /v0/auth/anonymous. " +
                        "Send it as the access-token header on every other request."
     });
     options.OperationFilter<SecurityRequirementsOperationFilter>();
@@ -82,6 +82,9 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 
 // Register repositories
 builder.Services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
+
+// Access tokens (JWT)
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 
 // Register application services
 builder.Services.AddSingleton<IAuthService, AuthService>();
