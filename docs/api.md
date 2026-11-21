@@ -20,6 +20,12 @@ This page is for frontend developers consuming `api-back`.
   `Development`. Lets you try requests directly from the browser, including
   authorizing with a token.
 
+## Coming next: accounts
+
+User accounts, sign-in and the saved mobility profile are not implemented yet. Their contract is
+agreed in advance in `docs/contracts/accounts.openapi.yaml`, explained in
+`docs/contracts/accounts.md`, so the apps can build their screens now.
+
 ## Auth flow
 
 1. `GET /v0/auth/anonymous` → `202` with `{ "accessToken": "<32 hex chars>" }`.
