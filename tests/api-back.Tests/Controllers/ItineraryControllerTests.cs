@@ -30,4 +30,25 @@ public class ItineraryControllerTests
         Assert.Same(expected, objectResult.Value);
         service.Verify(s => s.ComputeItineraryAsync(request), Times.Once);
     }
+
+    [Fact]
+    public async Task GetItinerary_Always_Returns200WithServiceResultAndCallsServiceOnce()
+    {
+        var request = new CreateItineraryRequest { Start = "a", End = "b", MobilityProfile = MobilityProfile.Pedestrian };
+        var expected = new ItineraryResponse
+        {
+            Points = new List<PointResponse> { new() { Lat = 1, Lng = 2 } }
+        };
+
+        var service = new Mock<IItineraryService>();
+        service.Setup(s => s.ComputeItineraryAsync(request)).ReturnsAsync(expected);
+        var controller = new ItineraryController(service.Object);
+
+        var result = await controller.GetItinerary(request);
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(200, okResult.StatusCode);
+        Assert.Same(expected, okResult.Value);
+        service.Verify(s => s.ComputeItineraryAsync(request), Times.Once);
+    }
 }
