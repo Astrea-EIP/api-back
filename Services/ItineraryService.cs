@@ -83,10 +83,11 @@ public class ItineraryService : IItineraryService
             userObject["width"] = request.WheelchairWidth.Value;
         }
 
-        // Béquilles : peut monter des escaliers ou non.
+        // Béquilles : peut monter des escaliers ou non. Le moteur attend la clé inverse,
+        // "avoid_stairs" (core-moteur #23 refuse toute clé qu'il ne connaît pas).
         if (request.MobilityProfile == MobilityProfile.Crutches && request.CanClimbStairs.HasValue)
         {
-            userObject["can_take_stairs"] = request.CanClimbStairs.Value;
+            userObject["avoid_stairs"] = !request.CanClimbStairs.Value;
         }
 
         // Piéton : "préfère les escaliers aux pentes" => éviter les pentes,
