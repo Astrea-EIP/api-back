@@ -108,4 +108,47 @@ public class UserRepositoryTests : IClassFixture<MongoDbFixture>
 
         Assert.Null(fetched);
     }
+
+    [Fact]
+    public async Task GetByIdAsync_ExistingAccount_ReturnsIt()
+    {
+        var user = NewUser();
+        await _repository.TryCreateAsync(user);
+
+        var fetched = await _repository.GetByIdAsync(user.Id);
+
+        Assert.NotNull(fetched);
+        Assert.Equal(user.Email, fetched!.Email);
+    }
+
+    [Theory]
+    [InlineData("6740f1c2a9e3b54d2c1f0a77")]
+    [InlineData("not-an-object-id")]
+    public async Task GetByIdAsync_UnknownOrInvalidId_ReturnsNull(string id)
+    {
+        Assert.Null(await _repository.GetByIdAsync(id));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ExistingAccount_DeletesOnlyItAndReturnsTrue()
+    {
+        var removed = NewUser();
+        var kept = NewUser();
+        await _repository.TryCreateAsync(removed);
+        await _repository.TryCreateAsync(kept);
+
+        var deleted = await _repository.DeleteAsync(removed.Id);
+
+        Assert.True(deleted);
+        Assert.Null(await _repository.GetByIdAsync(removed.Id));
+        Assert.NotNull(await _repository.GetByIdAsync(kept.Id));
+    }
+
+    [Theory]
+    [InlineData("6740f1c2a9e3b54d2c1f0a77")]
+    [InlineData("not-an-object-id")]
+    public async Task DeleteAsync_UnknownOrInvalidId_ReturnsFalse(string id)
+    {
+        Assert.False(await _repository.DeleteAsync(id));
+    }
 }
