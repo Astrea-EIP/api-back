@@ -149,6 +149,65 @@ public class ApiEndToEndTests
     }
 
     [Fact]
+    public async Task GetItinerary_NoHeader_Returns401WithEmptyBody()
+    {
+        using var ctx = ApiTestContext.Create();
+
+        var response = await ctx.Client.GetAsync("/v0/itinerary?start=a&end=b&mobility_profile=0");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Empty(await response.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task GetItinerary_Coordinates_Returns200AndSendsStartThenEndToGraphHopper()
+    {
+        using var ctx = ApiTestContext.Create();
+        ctx.GraphHopper.Server
+            .Given(Request.Create().WithPath("/route").UsingPost())
+            .RespondWith(Response.Create().WithStatusCode(200).WithHeader("Content-Type", "application/json").WithBody(Route));
+
+        var token = await ctx.Client.GetAnonymousTokenAsync();
+        ctx.Client.DefaultRequestHeaders.Add("access-token", token);
+
+        var response = await ctx.Client.GetAsync("/v0/itinerary?start=48.8566,2.3522&end=48.8606,2.3376&mobility_profile=0");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+        Assert.Equal(2, body["points"]!.AsArray().Count);
+
+        var requestBody = JsonNode.Parse(ctx.GraphHopper.Server.LogEntries.Single().RequestMessage.Body!)!.AsObject();
+        var sentPoints = requestBody["points"]!.AsArray();
+        Assert.Equal(2.3522, sentPoints[0]![0]!.GetValue<double>());
+        Assert.Equal(48.8566, sentPoints[0]![1]!.GetValue<double>());
+        Assert.Equal(2.3376, sentPoints[1]![0]!.GetValue<double>());
+        Assert.Equal(48.8606, sentPoints[1]![1]!.GetValue<double>());
+    }
+
+    public static IEnumerable<object[]> InvalidQueries()
+    {
+        yield return new object[] { "missing start", "end=48.8606,2.3376&mobility_profile=0" };
+        yield return new object[] { "missing end", "start=48.8566,2.3522&mobility_profile=0" };
+        yield return new object[] { "wheelchair_width too large", "start=a&end=b&mobility_profile=1&wheelchair_width=2.5" };
+        yield return new object[] { "mobility_profile not a number", "start=a&end=b&mobility_profile=abc" };
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidQueries))]
+    public async Task GetItinerary_InvalidQuery_Returns400WithNonEmptyError(string scenario, string query)
+    {
+        using var ctx = ApiTestContext.Create();
+        var token = await ctx.Client.GetAnonymousTokenAsync();
+        ctx.Client.DefaultRequestHeaders.Add("access-token", token);
+
+        var response = await ctx.Client.GetAsync($"/v0/itinerary?{query}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+        Assert.False(string.IsNullOrEmpty(body["error"]?.GetValue<string>()), $"Scenario '{scenario}' expected a non-empty error.");
+    }
+
+    [Fact]
     public async Task PostItinerary_Addresses_HitsNominatimWithExpectedQueryAndUserAgentThenReturns201()
     {
         using var ctx = ApiTestContext.Create();
@@ -297,6 +356,9 @@ public class ApiEndToEndTests
 
         var itinerary = paths["/v0/itinerary"]!["post"]!["responses"]!.AsObject();
         Assert.Equal(new HashSet<string> { "201", "400", "401", "422", "500" }, itinerary.Select(kvp => kvp.Key).ToHashSet());
+
+        var itineraryGet = paths["/v0/itinerary"]!["get"]!["responses"]!.AsObject();
+        Assert.Equal(new HashSet<string> { "200", "400", "401", "422", "500" }, itineraryGet.Select(kvp => kvp.Key).ToHashSet());
 
         var auth = paths["/v0/auth/anonymous"]!["get"]!["responses"]!.AsObject();
         Assert.Equal(new HashSet<string> { "202", "400", "500" }, auth.Select(kvp => kvp.Key).ToHashSet());

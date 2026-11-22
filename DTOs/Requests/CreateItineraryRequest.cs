@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace proto_back.DTOs.Requests;
 
@@ -55,19 +56,21 @@ public enum PathPreference
     Benches = 1 << 4
 }
 
-/// <summary>Request body for <c>POST /v0/itinerary</c>.</summary>
+/// <summary>Request body for <c>POST /v0/itinerary</c>, and query string for <c>GET /v0/itinerary</c> (same snake_case names).</summary>
 public class CreateItineraryRequest
 {
     /// <summary>The starting point: either coordinates as <c>"lat,lng"</c> with <c>.</c> as the decimal separator, or a free-text address geocoded through Nominatim.</summary>
     /// <example>48.8566,2.3522</example>
     [Required]
     [JsonPropertyName("start")]
+    [FromQuery(Name = "start")]
     public string Start { get; set; } = null!;
 
     /// <summary>The destination point, in the same formats as <c>start</c>.</summary>
     /// <example>48.8606,2.3376</example>
     [Required]
     [JsonPropertyName("end")]
+    [FromQuery(Name = "end")]
     public string End { get; set; } = null!;
 
     // -------------------------------------------------------------------------
@@ -78,6 +81,7 @@ public class CreateItineraryRequest
     /// <example>0</example>
     [Required]
     [JsonPropertyName("mobility_profile")]
+    [FromQuery(Name = "mobility_profile")]
     public MobilityProfile MobilityProfile { get; set; } = MobilityProfile.Pedestrian;
 
     // -------------------------------------------------------------------------
@@ -88,10 +92,12 @@ public class CreateItineraryRequest
     /// <example>0.7</example>
     [Range(0.0, 2.0, MinimumIsExclusive = true)]
     [JsonPropertyName("wheelchair_width")]
+    [FromQuery(Name = "wheelchair_width")]
     public double? WheelchairWidth { get; set; }
 
     /// <summary>Physical strength of a wheelchair user. Applies to the Wheelchair profile. Determines tolerance to slopes and slightly raised curbs.</summary>
     [JsonPropertyName("physical_strength")]
+    [FromQuery(Name = "physical_strength")]
     public PhysicalStrength? PhysicalStrength { get; set; }
 
     // -------------------------------------------------------------------------
@@ -100,6 +106,7 @@ public class CreateItineraryRequest
 
     /// <summary>Whether the user is accompanied. Applies to the Wheelchair and Blind profiles. Wheelchair: allows gentle slopes even without physical strength. Blind: if not accompanied, a tactile paving path becomes mandatory.</summary>
     [JsonPropertyName("is_accompanied")]
+    [FromQuery(Name = "is_accompanied")]
     public bool? IsAccompanied { get; set; }
 
     // -------------------------------------------------------------------------
@@ -108,6 +115,7 @@ public class CreateItineraryRequest
 
     /// <summary>Whether a person on crutches can climb stairs. Applies to the Crutches profile. true: stairs are acceptable (but not too many/too high). false: no stairs, no raised curbs.</summary>
     [JsonPropertyName("can_climb_stairs")]
+    [FromQuery(Name = "can_climb_stairs")]
     public bool? CanClimbStairs { get; set; }
 
     // -------------------------------------------------------------------------
@@ -117,5 +125,6 @@ public class CreateItineraryRequest
     /// <summary>Route preferences for an able-bodied pedestrian. Applies to the Pedestrian profile. Example: <c>LitStreets | Benches</c> = 24.</summary>
     /// <example>24</example>
     [JsonPropertyName("path_preferences")]
+    [FromQuery(Name = "path_preferences")]
     public PathPreference? PathPreferences { get; set; }
 }
