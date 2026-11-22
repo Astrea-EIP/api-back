@@ -28,7 +28,7 @@ A field is only sent for the mobility profile it applies to.
 | --- | --- | --- |
 | `mobility_profile` 0 / 1 / 2 / 3 | `profile`: `walking` / `wheelchair` / `crutches` / `blind` | all |
 | `wheelchair_width` | `width` | Wheelchair |
-| `can_climb_stairs` | `can_take_stairs` | Crutches |
+| `can_climb_stairs` | `avoid_stairs`: the opposite value | Crutches |
 | `path_preferences` `Stairs` (prefers stairs over slopes) | `avoid_slopes: true` | Pedestrian |
 | `path_preferences` `Slopes` (prefers slopes over stairs) | `avoid_stairs: true` | Pedestrian |
 
@@ -41,4 +41,6 @@ Not sent yet, because the engine does not handle them (see the TODO in `BuildUse
 path preferences. They are still accepted and validated by the API.
 
 The engine only uses this JSON from the release that includes core-moteur PR #23
-(profile personalisation). Earlier engine versions ignore it.
+(profile personalisation). Earlier engine versions ignore it. From that release, the engine
+refuses any key it does not know: `ItineraryServiceTests` checks that `BuildUserJson` only sends
+keys listed in the engine's `UserProfile`, so update that list together with the engine.
