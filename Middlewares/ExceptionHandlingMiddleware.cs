@@ -31,6 +31,10 @@ public class ExceptionHandlingMiddleware
 
             context.Response.StatusCode = ex.StatusCode;
             context.Response.ContentType = "application/json";
+            if (ex is TooManyRequestsException tooMany)
+            {
+                context.Response.Headers.RetryAfter = tooMany.RetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
 
             var json = JsonSerializer.Serialize(new ErrorResponse { Error = ex.Message }, new JsonSerializerOptions
             {

@@ -1,12 +1,15 @@
 using System.Reflection;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi;
 using MongoDB.Driver;
 using proto_back.Configurations;
 using proto_back.Interfaces.IRepositories;
 using proto_back.Interfaces.IServices;
 using proto_back.Middlewares;
+using proto_back.Models.Entities;
 using proto_back.Repositories;
 using proto_back.Services;
+using proto_back.Shared.Auth;
 using proto_back.Shared.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -44,8 +47,8 @@ builder.Services.AddSwaggerGen(options =>
         Title = "Astrea API",
         Version = "v0",
         Description = "Computes accessibility-aware itineraries for ASTREA's Beta Test Plan. " +
-                       "Call GET /v0/auth/anonymous to obtain a token, then send it as the " +
-                       "access-token header on every other request."
+                       "Call GET /v0/auth/anonymous (or sign up or sign in) to obtain a token, then " +
+                       "send it as the access-token header on every other request."
     });
 
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -56,7 +59,8 @@ builder.Services.AddSwaggerGen(options =>
         Type = SecuritySchemeType.ApiKey,
         In = ParameterLocation.Header,
         Name = "access-token",
-        Description = "Access token (JWT) obtained from GET /v0/auth/anonymous. " +
+        Description = "Access token (JWT) obtained from GET /v0/auth/anonymous, " +
+                       "POST /v0/auth/register or POST /v0/auth/login. " +
                        "Send it as the access-token header on every other request."
     });
     options.OperationFilter<SecurityRequirementsOperationFilter>();
@@ -82,12 +86,18 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 
 // Register repositories
 builder.Services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
+builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // Access tokens (JWT)
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 
 // Register application services
 builder.Services.AddSingleton<IAuthService, AuthService>();
+builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddSingleton<ILoginAttemptTracker, LoginAttemptTracker>();
+builder.Services.AddAuthRateLimiting(builder.Configuration);
 builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>((sp, client) =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
@@ -114,6 +124,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("LocalWeb");
+
+// Limits on sign-in and sign-up per client IP address (429 above the limit).
+app.UseAuthRateLimiting();
 
 // Custom middleware: validate access-token header on protected routes
 app.UseMiddleware<AccessTokenMiddleware>();
