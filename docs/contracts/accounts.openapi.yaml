@@ -23,9 +23,10 @@ paths:
         - Auth
       summary: Create an account and sign in.
       description: >-
-        Public endpoint: no access-token header is required. The consent to store the
-        location and the mobility profile is mandatory (GDPR). The returned token is a user
-        token, sent as the access-token header like the anonymous token.
+        Public endpoint: no access-token header is required. No consent is asked here: the
+        account holds no health data. The consent to store the mobility profile is given
+        with PUT /v0/users/me/profile. The returned token is a user token, sent as the
+        access-token header like the anonymous token.
       operationId: register
       security: []
       requestBody:
@@ -42,7 +43,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
         '400':
-          description: A field is missing or invalid, or the consent was not given.
+          description: A field is missing or invalid.
           content:
             application/json:
               schema:
@@ -115,7 +116,10 @@ paths:
       summary: Delete the signed-in user's account and mobility profile.
       description: >-
         Right to erasure (GDPR): the account and the mobility profile are deleted for good.
-        The user token stops working.
+        Tokens are stateless and are not revoked, but every /v0/users/me route checks that
+        the account still exists and answers 401 otherwise, so the user token gives no
+        access to personal data any more. It can still call the anonymous routes until it
+        expires, like an anonymous token.
       operationId: deleteCurrentUser
       responses:
         '204':
@@ -179,6 +183,23 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/ServerError'
+    delete:
+      tags:
+        - Users
+      summary: Delete the signed-in user's mobility profile and withdraw the consent.
+      description: >-
+        Withdrawal of the consent (GDPR): the mobility profile and the consent date are
+        deleted for good, the account is kept. The user can save a new profile later with
+        PUT /v0/users/me/profile, which asks for the consent again. Deleting a profile that
+        does not exist also answers 204.
+      operationId: deleteCurrentUserProfile
+      responses:
+        '204':
+          description: The mobility profile and the consent were deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
 security:
   - accessToken: []
 components:
@@ -189,10 +210,13 @@ components:
       name: access-token
       description: >-
         User token returned by POST /v0/auth/register or POST /v0/auth/login. The
-        /v0/users/me routes refuse the anonymous token from GET /v0/auth/anonymous with a 401.
+        /v0/users/me routes refuse the anonymous token from GET /v0/auth/anonymous with a 401,
+        and also refuse a user token whose account was deleted.
   responses:
     Unauthorized:
-      description: The access-token header is missing, invalid, expired, or is an anonymous token.
+      description: >-
+        The access-token header is missing, invalid, expired, or is an anonymous token, or the
+        account of the user token no longer exists.
     ServerError:
       description: An unexpected error occurred.
       content:
@@ -208,7 +232,6 @@ components:
         - email
         - password
         - birth_date
-        - consent
       properties:
         name:
           type: string
@@ -233,13 +256,6 @@ components:
           format: date
           description: Date of birth, ISO format YYYY-MM-DD. Must be in the past.
           example: '1998-04-12'
-        consent:
-          type: boolean
-          const: true
-          description: >-
-            Consent to store the location and the mobility profile (GDPR). Must be true,
-            otherwise the request is refused with a 400.
-          example: true
     LoginRequest:
       type: object
       additionalProperties: false
@@ -307,7 +323,10 @@ components:
         consent:
           type: boolean
           const: true
-          description: Consent to store the mobility profile (GDPR). Must be true.
+          description: >-
+            Consent to store the mobility profile, which is health data (GDPR). Must be true,
+            otherwise the request is refused with a 400. Withdraw it with
+            DELETE /v0/users/me/profile.
           example: true
         app_profile:
           type: string

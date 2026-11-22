@@ -26,6 +26,7 @@ profile screens. It explains the contract in `docs/contracts/accounts.openapi.ya
 | `DELETE` | `/v0/users/me` | Delete the account and the profile | `204`, `401`, `500` |
 | `GET` | `/v0/users/me/profile` | Get the mobility profile | `200`, `401`, `404`, `500` |
 | `PUT` | `/v0/users/me/profile` | Create or replace the mobility profile | `200`, `400`, `401`, `500` |
+| `DELETE` | `/v0/users/me/profile` | Delete the profile and withdraw the consent, keep the account | `204`, `401`, `500` |
 
 ## Decisions
 
@@ -35,12 +36,22 @@ profile screens. It explains the contract in `docs/contracts/accounts.openapi.ya
 - **Anonymous mode stays.** The anonymous token still works for the itinerary and wheelchair
   endpoints. The `/v0/users/me` routes require a user token
   and answer `401` to an anonymous token.
+- **Token after deletion.** Tokens are stateless and are not revoked. Every `/v0/users/me`
+  route checks that the account still exists and answers `401` otherwise, so after
+  `DELETE /v0/users/me` the token gives no access to personal data. Until it expires, it can
+  still call the anonymous routes, like an anonymous token. The apps delete the token on their
+  side after the deletion.
 - **Field names.** New fields are in `snake_case`, like the itinerary and wheelchair endpoints.
   `accessToken` keeps its current name so the existing token parsing does not change.
 - **Consent (GDPR).** The mobility profile can reveal a disability, which makes it health data.
-  `consent: true` is required both at sign-up and when saving the profile, otherwise the API
-  answers `400`. The API stores when the consent was first given (`consent_given_at`).
-  `DELETE /v0/users/me` deletes the account and the profile for good.
+  The consent is asked only when the profile is saved: `consent: true` is required on
+  `PUT /v0/users/me/profile`, otherwise the API answers `400`. Sign-up asks for no consent,
+  because the account holds no health data. The API stores when the consent was first given
+  (`consent_given_at`).
+- **Withdrawal and erasure (GDPR).** `DELETE /v0/users/me/profile` withdraws the consent: the
+  profile and `consent_given_at` are deleted for good and the account is kept. Saving a profile
+  again asks for the consent again. `DELETE /v0/users/me` deletes the account and the profile
+  for good.
 - **One profile model.** The profile uses the fields of `POST /v0/itinerary`, with the same names,
   values and rules. A saved profile can therefore be sent as is to compute an itinerary, and the
   API ignores the fields that do not apply to the chosen `mobility_profile`.
@@ -61,7 +72,7 @@ profile screens. It explains the contract in `docs/contracts/accounts.openapi.ya
 |---|---|
 | `RegisterRequest.name`, `email`, `password` | `name`, `email`, `password` |
 | `RegisterRequest.birthDate` | `birth_date` |
-| `RegisterRequest.consent` | `consent` |
+| `RegisterRequest.consent` | not sent any more: the consent moves to the profile screen, `consent` on `PUT /v0/users/me/profile` |
 | `AccountSession.accessToken` | `accessToken` |
 | `AccountErrorCode` `email-already-used` / `invalid-credentials` | `409` on register / `401` on login |
 | `profile` `manual-wheelchair`, `electric-wheelchair` | `mobility_profile: 1` |
