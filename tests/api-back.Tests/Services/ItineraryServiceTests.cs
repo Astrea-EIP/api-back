@@ -119,7 +119,7 @@ public class ItineraryServiceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void BuildUserJson_CrutchesWithCanClimbStairs_SendsCanTakeStairs(bool canClimbStairs)
+    public void BuildUserJson_CrutchesWithCanClimbStairs_SendsTheOppositeAsAvoidStairs(bool canClimbStairs)
     {
         var request = new CreateItineraryRequest
         {
@@ -131,8 +131,9 @@ public class ItineraryServiceTests
 
         var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
 
-        Assert.True(node.ContainsKey("can_take_stairs"));
-        Assert.Equal(canClimbStairs, node["can_take_stairs"]!.GetValue<bool>());
+        Assert.True(node.ContainsKey("avoid_stairs"));
+        Assert.Equal(!canClimbStairs, node["avoid_stairs"]!.GetValue<bool>());
+        Assert.False(node.ContainsKey("can_take_stairs"));
     }
 
     [Theory]
@@ -146,6 +147,10 @@ public class ItineraryServiceTests
         var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
 
         Assert.False(node.ContainsKey("can_take_stairs"));
+        if (profile != MobilityProfile.Pedestrian)
+        {
+            Assert.False(node.ContainsKey("avoid_stairs"));
+        }
     }
 
     [Fact]
@@ -244,6 +249,56 @@ public class ItineraryServiceTests
 
         Assert.Equal(new[] { "profile" }, wheelchairNode.Select(kvp => kvp.Key));
         Assert.Equal(new[] { "profile" }, pedestrianNode.Select(kvp => kvp.Key));
+    }
+
+    // Keys accepted by the engine's user profile (core-moteur, lib/CustomModel/UserProfile.cs).
+    // The engine refuses any other key, so sending a key it does not know would turn every
+    // itinerary of that profile into a 500.
+    private static readonly HashSet<string> EngineProfileKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "profile", "preset", "name",
+        "avoid_stairs", "stairs_penalty",
+        "max_slope", "avoid_slopes",
+        "has_wheels",
+        "blindness",
+        "width", "length",
+        "max_speed",
+        "distance_influence", "dimensions"
+    };
+
+    public static IEnumerable<object[]> FullRequests()
+    {
+        foreach (var profile in Enum.GetValues<MobilityProfile>())
+        {
+            foreach (var preferences in new[] { PathPreference.Stairs, PathPreference.Slopes, (PathPreference)31 })
+            {
+                foreach (var canClimbStairs in new[] { true, false })
+                {
+                    yield return new object[] { profile, preferences, canClimbStairs };
+                }
+            }
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(FullRequests))]
+    public void BuildUserJson_AnyRequest_OnlySendsKeysTheEngineKnows(MobilityProfile profile, PathPreference preferences, bool canClimbStairs)
+    {
+        var request = new CreateItineraryRequest
+        {
+            Start = "a",
+            End = "b",
+            MobilityProfile = profile,
+            WheelchairWidth = 0.7,
+            PhysicalStrength = PhysicalStrength.Low,
+            IsAccompanied = true,
+            CanClimbStairs = canClimbStairs,
+            PathPreferences = preferences
+        };
+
+        var node = JsonNode.Parse(ItineraryService.BuildUserJson(request))!.AsObject();
+
+        Assert.All(node, kvp => Assert.Contains(kvp.Key, EngineProfileKeys));
     }
 
     [Fact]
