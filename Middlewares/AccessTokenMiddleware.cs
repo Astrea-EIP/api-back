@@ -39,12 +39,16 @@ public class AccessTokenMiddleware
 
         var token = tokenValues.First()!;
 
-        // Validate the token
-        if (!authService.ValidateToken(token))
+        // Validate the token (signature, issuer, audience, expiry)
+        var principal = await authService.ValidateTokenAsync(token);
+        if (principal is null)
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
+
+        // Expose the token claims (anonymous or user, user id) to the controllers
+        context.User = principal;
 
         await _next(context);
     }

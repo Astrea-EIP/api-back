@@ -12,7 +12,7 @@
           "Auth"
         ],
         "summary": "Get an anonymous access token.",
-        "description": "This endpoint is public: no `access-token` header is required. The returned token must be sent as the `access-token` header on every other request. Tokens are kept in memory and are lost when the API restarts.",
+        "description": "This endpoint is public: no `access-token` header is required. The returned token must be sent as the `access-token` header on every other request. The token is a signed JWT that expires after 24 hours: on a `401`, get a new one.",
         "operationId": "getAnonymousToken",
         "responses": {
           "202": {
@@ -406,7 +406,7 @@
         "properties": {
           "accessToken": {
             "type": "string",
-            "description": "The anonymous access token. Send it as the `access-token` header on every other request."
+            "description": "The access token (JWT). Send it as the `access-token` header on every other request."
           }
         },
         "additionalProperties": false,
@@ -513,7 +513,7 @@
     "securitySchemes": {
       "accessToken": {
         "type": "apiKey",
-        "description": "Anonymous access token obtained from GET /v0/auth/anonymous. Send it as the access-token header on every other request.",
+        "description": "Access token (JWT) obtained from GET /v0/auth/anonymous. Send it as the access-token header on every other request.",
         "name": "access-token",
         "in": "header"
       }

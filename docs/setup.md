@@ -63,6 +63,7 @@ docker compose --profile api down
 | `ASPNETCORE_ENVIRONMENT` | `Production` disables Swagger; `Development` enables it at `/swagger` | `Production` | `Development` |
 | `MongoDb__ConnectionString` | MongoDB connection string | placeholder, not usable as-is | `mongodb://mongo:27017` |
 | `MongoDb__DatabaseName` | MongoDB database name | `astrea_proto` | `astrea_proto` |
+| `Jwt__SigningKey` | Secret that signs the access tokens, at least 32 characters. Keep it secret and stable: changing it invalidates every token | not set — a random key is used and tokens stop working when the API restarts | any random string of 32+ characters |
 | `GraphHopper__BaseUrl` | GraphHopper base URL, required for `/v0/itinerary` | not set — itinerary requests fail until provided | `http://host.docker.internal:8989` |
 | `Nominatim__BaseUrl` | Nominatim geocoding base URL | `https://nominatim.openstreetmap.org` | `https://nominatim.openstreetmap.org` |
 
@@ -112,8 +113,8 @@ Quick check from the phone browser: `http://<computer IP>:5217/swagger` should o
   This is configured in the mobile repository, not here.
 - **Do not use the `https` profile from a phone.** It only listens on `localhost`, and it
   redirects HTTP calls to HTTPS on port `7028`. Use the `lan` profile instead.
-- **401 after restarting the API.** Anonymous tokens are kept in memory: get a new one with
-  `GET /v0/auth/anonymous` and retry.
+- **401 after restarting the API.** Without `Jwt__SigningKey`, tokens are signed with a random
+  key that changes at each start: get a new one with `GET /v0/auth/anonymous` and retry.
 - **Simulated GPS position.** Send it as the `start` of the itinerary in the `"lat,lng"` format
   (no geocoding needed). It must be inside the OSM extract loaded in GraphHopper, otherwise the
   itinerary request fails (see issue #87 for clearer error codes).

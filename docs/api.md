@@ -22,10 +22,11 @@ This page is for frontend developers consuming `api-back`.
 
 ## Auth flow
 
-1. `GET /v0/auth/anonymous` → `202` with `{ "accessToken": "<32 hex chars>" }`.
+1. `GET /v0/auth/anonymous` → `202` with `{ "accessToken": "<JWT>" }`.
 2. Send that token as the `access-token` header on every other request.
-3. Tokens are kept in memory and are **lost when the API restarts**. If a request gets
-   a `401`, fetch a new token and retry the request once before giving up.
+3. The token is a signed JWT that expires after 24 hours. It survives an API restart as long
+   as `Jwt__SigningKey` is set (see `docs/setup.md`). If a request gets a `401`, fetch a new
+   token and retry the request once before giving up.
 
 ## Endpoints
 
