@@ -27,7 +27,7 @@ public class AuthControllerTests
     [Fact]
     public async Task Register_ValidRequest_Returns201WithUserToken()
     {
-        var request = new RegisterRequest { Name = "Camille", Email = "camille@example.com", Password = "correct-horse-battery", BirthDate = new DateOnly(1998, 4, 12) };
+        var request = new RegisterRequest { Name = "Camille", Email = "camille@example.com", Password = "correct-horse-battery-9", BirthDate = new DateOnly(1998, 4, 12) };
         var accountService = new Mock<IAccountService>();
         accountService.Setup(a => a.RegisterAsync(request)).ReturnsAsync("user-token");
         var controller = new AuthController(Mock.Of<IAuthService>(), accountService.Object);
@@ -42,7 +42,7 @@ public class AuthControllerTests
     [Fact]
     public async Task Login_ValidCredentials_Returns200WithUserToken()
     {
-        var request = new LoginRequest { Email = "camille@example.com", Password = "correct-horse-battery" };
+        var request = new LoginRequest { Email = "camille@example.com", Password = "correct-horse-battery-9" };
         var accountService = new Mock<IAccountService>();
         accountService.Setup(a => a.LoginAsync(request)).ReturnsAsync("user-token");
         var controller = new AuthController(Mock.Of<IAuthService>(), accountService.Object);
