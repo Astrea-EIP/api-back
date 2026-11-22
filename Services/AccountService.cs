@@ -16,6 +16,7 @@ public class AccountService : IAccountService
     private readonly IUserRepository _users;
     private readonly IAuthService _authService;
     private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly ILoginAttemptTracker _loginAttempts;
     private readonly TimeProvider _timeProvider;
 
     // Hash checked when the email address has no account, so that a sign-in with an unknown
@@ -26,11 +27,13 @@ public class AccountService : IAccountService
         IUserRepository users,
         IAuthService authService,
         IPasswordHasher<User> passwordHasher,
+        ILoginAttemptTracker loginAttempts,
         TimeProvider? timeProvider = null)
     {
         _users = users;
         _authService = authService;
         _passwordHasher = passwordHasher;
+        _loginAttempts = loginAttempts;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _unknownUserHash = new Lazy<string>(() => _passwordHasher.HashPassword(new User(), Guid.NewGuid().ToString("N")));
     }
@@ -56,20 +59,32 @@ public class AccountService : IAccountService
 
     public async Task<string> LoginAsync(LoginRequest request)
     {
-        var user = await _users.GetByEmailAsync(NormalizeEmail(request.Email));
+        var email = NormalizeEmail(request.Email);
+
+        // Checked before the password, so that a blocked address cannot be used to test passwords.
+        // Unknown addresses are counted too: the answer must not reveal whether an account exists.
+        if (_loginAttempts.IsBlocked(email, out var retryAfter))
+        {
+            throw new TooManyRequestsException(retryAfter);
+        }
+
+        var user = await _users.GetByEmailAsync(email);
 
         if (user is null)
         {
             _passwordHasher.VerifyHashedPassword(new User(), _unknownUserHash.Value, request.Password);
+            _loginAttempts.RecordFailure(email);
             throw new InvalidCredentialsException();
         }
 
         var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
         if (result == PasswordVerificationResult.Failed)
         {
+            _loginAttempts.RecordFailure(email);
             throw new InvalidCredentialsException();
         }
 
+        _loginAttempts.Reset(email);
         return _authService.GenerateUserToken(user.Id);
     }
 
