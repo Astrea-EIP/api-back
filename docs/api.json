@@ -608,7 +608,7 @@
             "minLength": 1,
             "type": "string",
             "description": "Password of the account.",
-            "example": "correct-horse-battery"
+            "example": "correct-horse-battery-9"
           }
         },
         "additionalProperties": false,
@@ -704,8 +704,8 @@
             "maxLength": 128,
             "minLength": 8,
             "type": "string",
-            "description": "At least 8 characters. Stored as a hash, never in clear text.",
-            "example": "correct-horse-battery"
+            "description": "At least 8 characters, with at least one letter and one digit (same rule as the web and mobile apps). Stored as a hash, never in clear text.",
+            "example": "correct-horse-battery-9"
           },
           "birth_date": {
             "type": "string",
