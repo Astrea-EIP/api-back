@@ -12,7 +12,8 @@ public interface IAccountService
 
     /// <summary>
     /// Checks the email address and the password and returns a user token.
-    /// Throws <see cref="Shared.Errors.InvalidCredentialsException"/> when either is wrong.
+    /// Throws <see cref="Shared.Errors.InvalidCredentialsException"/> when either is wrong, and
+    /// <see cref="Shared.Errors.TooManyRequestsException"/> when the address failed too many times.
     /// </summary>
     Task<string> LoginAsync(LoginRequest request);
 }
