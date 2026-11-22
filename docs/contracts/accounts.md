@@ -62,6 +62,9 @@ profile screens. It explains the contract in `docs/contracts/accounts.openapi.ya
 - **App choice.** `app_profile` is a free value the API stores and returns without using it, so
   an app can restore its own form when several of its choices share the same `mobility_profile`
   (for example `stroller` and `pedestrian` are both `0`).
+- **Password rule.** At least 8 characters (128 at most), with at least one letter (any
+  alphabet, accents included) and one digit from 0 to 9. The web and mobile apps check the same
+  rule before sending; the API refuses anything else with a `400`.
 - **Login errors.** A wrong email and a wrong password both give the same `401` message, so the
   endpoint cannot be used to find out whether an email address has an account.
 
