@@ -210,11 +210,77 @@ public class AccountsEndToEndTests
         var paths = doc["paths"]!.AsObject();
 
         var register = paths["/v0/auth/register"]!["post"]!.AsObject();
-        Assert.Equal(new HashSet<string> { "201", "400", "409", "500" }, register["responses"]!.AsObject().Select(kvp => kvp.Key).ToHashSet());
+        Assert.Equal(new HashSet<string> { "201", "400", "409", "429", "500" }, register["responses"]!.AsObject().Select(kvp => kvp.Key).ToHashSet());
         Assert.Null(register["security"]);
 
         var login = paths["/v0/auth/login"]!["post"]!.AsObject();
-        Assert.Equal(new HashSet<string> { "200", "400", "401", "500" }, login["responses"]!.AsObject().Select(kvp => kvp.Key).ToHashSet());
+        Assert.Equal(new HashSet<string> { "200", "400", "401", "429", "500" }, login["responses"]!.AsObject().Select(kvp => kvp.Key).ToHashSet());
         Assert.Null(login["security"]);
+    }
+
+    [Fact]
+    public async Task Login_MoreThanFivePerMinuteFromOneIp_Returns429WithRetryAfter()
+    {
+        using var ctx = ApiTestContext.Create();
+        await ctx.Client.PostAsJsonAsync("/v0/auth/register", NewAccount());
+
+        for (var i = 0; i < 5; i++)
+        {
+            var allowed = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = $"user{i}@example.com", password = "wrong-password-1" });
+            Assert.Equal(HttpStatusCode.Unauthorized, allowed.StatusCode);
+        }
+
+        var response = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = "camille@example.com", password = "correct-horse-battery-9" });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.True(response.Headers.RetryAfter?.Delta > TimeSpan.Zero);
+        await ReadErrorAsync(response);
+    }
+
+    [Fact]
+    public async Task Register_MoreThanTenPerHourFromOneIp_Returns429WithRetryAfter()
+    {
+        using var ctx = ApiTestContext.Create();
+
+        for (var i = 0; i < 10; i++)
+        {
+            var allowed = await ctx.Client.PostAsJsonAsync("/v0/auth/register", NewAccount($"user{i}@example.com"));
+            Assert.Equal(HttpStatusCode.Created, allowed.StatusCode);
+        }
+
+        var response = await ctx.Client.PostAsJsonAsync("/v0/auth/register", NewAccount("one-more@example.com"));
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.True(response.Headers.RetryAfter?.Delta > TimeSpan.Zero);
+        await ReadErrorAsync(response);
+        Assert.Equal(10, ctx.Factory.UserRepository.Users.Count);
+    }
+
+    [Fact]
+    public async Task Login_TooManyFailuresForOneEmail_Returns429EvenWithTheRightPassword()
+    {
+        using var ctx = ApiTestContext.Create();
+        await ctx.Client.PostAsJsonAsync("/v0/auth/register", NewAccount());
+        var tracker = ctx.Factory.Services.GetRequiredService<ILoginAttemptTracker>();
+        for (var i = 0; i < 10; i++)
+        {
+            tracker.RecordFailure("camille@example.com");
+        }
+
+        var response = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = "camille@example.com", password = "correct-horse-battery-9" });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.True(response.Headers.RetryAfter?.Delta > TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task OtherRoutes_AreNotRateLimited()
+    {
+        using var ctx = ApiTestContext.Create();
+
+        for (var i = 0; i < 20; i++)
+        {
+            Assert.Equal(HttpStatusCode.Accepted, (await ctx.Client.GetAsync("/v0/auth/anonymous")).StatusCode);
+        }
     }
 }
