@@ -28,7 +28,42 @@ public class ApiEndToEndTests
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         var body = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
         Assert.Equal(new HashSet<string> { "accessToken" }, body.Select(kvp => kvp.Key).ToHashSet());
-        Assert.Matches("^[0-9a-f]{32}$", body["accessToken"]!.GetValue<string>());
+        Assert.Matches(@"^[\w-]+\.[\w-]+\.[\w-]+$", body["accessToken"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task AnonymousToken_FromAnotherInstanceWithSameSigningKey_IsAccepted()
+    {
+        const string key = "an-end-to-end-test-signing-key-of-32+chars";
+        string token;
+        using (var first = ApiTestContext.Create(jwtSigningKey: key))
+        {
+            token = await first.Client.GetAnonymousTokenAsync();
+        }
+
+        using var second = ApiTestContext.Create(jwtSigningKey: key);
+        second.Client.DefaultRequestHeaders.Add("access-token", token);
+
+        var response = await second.Client.GetAsync("/v0/wheelchairs");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnonymousToken_FromAnotherInstanceWithAnotherSigningKey_Returns401()
+    {
+        string token;
+        using (var first = ApiTestContext.Create(jwtSigningKey: "first-end-to-end-test-signing-key-32+chars"))
+        {
+            token = await first.Client.GetAnonymousTokenAsync();
+        }
+
+        using var second = ApiTestContext.Create(jwtSigningKey: "other-end-to-end-test-signing-key-32+chars");
+        second.Client.DefaultRequestHeaders.Add("access-token", token);
+
+        var response = await second.Client.GetAsync("/v0/wheelchairs");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
