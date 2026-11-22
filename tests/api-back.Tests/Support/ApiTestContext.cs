@@ -12,14 +12,15 @@ public sealed class ApiTestContext : IDisposable
     public WireMockFixture Nominatim { get; }
     public HttpClient Client { get; }
 
-    public static ApiTestContext Create(bool configureGraphHopper = true)
+    public static ApiTestContext Create(bool configureGraphHopper = true, string? jwtSigningKey = null)
     {
         var graphHopper = new WireMockFixture();
         var nominatim = new WireMockFixture();
         var factory = new ApiFactory
         {
             GraphHopperBaseUrl = configureGraphHopper ? graphHopper.BaseUrl : null,
-            NominatimBaseUrl = nominatim.BaseUrl
+            NominatimBaseUrl = nominatim.BaseUrl,
+            JwtSigningKey = jwtSigningKey
         };
 
         return new ApiTestContext(factory, graphHopper, nominatim);

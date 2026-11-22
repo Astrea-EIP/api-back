@@ -28,10 +28,11 @@ agreed in advance in `docs/contracts/accounts.openapi.yaml`, explained in
 
 ## Auth flow
 
-1. `GET /v0/auth/anonymous` → `202` with `{ "accessToken": "<32 hex chars>" }`.
+1. `GET /v0/auth/anonymous` → `202` with `{ "accessToken": "<JWT>" }`.
 2. Send that token as the `access-token` header on every other request.
-3. Tokens are kept in memory and are **lost when the API restarts**. If a request gets
-   a `401`, fetch a new token and retry the request once before giving up.
+3. The token is a signed JWT that expires after 24 hours. It survives an API restart as long
+   as `Jwt__SigningKey` is set (see `docs/setup.md`). If a request gets a `401`, fetch a new
+   token and retry the request once before giving up.
 
 ## Endpoints
 
@@ -39,6 +40,7 @@ agreed in advance in `docs/contracts/accounts.openapi.yaml`, explained in
 |---|---|---|---|
 | `GET` | `/v0/auth/anonymous` | Get an anonymous access token | `202`, `400`, `500` |
 | `POST` | `/v0/itinerary` | Compute an itinerary | `201`, `400`, `401`, `422`, `500` |
+| `GET` | `/v0/itinerary` | Compute an itinerary, parameters in the query string | `200`, `400`, `401`, `422`, `500` |
 | `GET` | `/v0/wheelchairs` | List the standard wheelchairs and accessibility reference values | `200`, `401`, `500` |
 
 ## Request fields (`POST /v0/itinerary`)
@@ -59,6 +61,17 @@ agreed in advance in `docs/contracts/accounts.openapi.yaml`, explained in
 
 Full field descriptions, examples, and the exact schema are in `docs/api.json` /
 Swagger UI — this table is a quick reference, not the contract itself.
+
+## Query parameters (`GET /v0/itinerary`)
+
+Same computation as `POST /v0/itinerary`, for clients that can only send a GET (a
+shareable link, a simple fetch). Every field of the table above becomes a query parameter
+with the same name, format and rules, and the response body is the same, with `200`
+instead of `201`. Encode free-text addresses (`encodeURIComponent`).
+
+```
+GET /v0/itinerary?start=48.8566,2.3522&end=48.8606,2.3376&mobility_profile=1&wheelchair_width=0.7
+```
 
 ## Wheelchair catalogue (`GET /v0/wheelchairs`)
 

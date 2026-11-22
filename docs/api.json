@@ -12,7 +12,7 @@
           "Auth"
         ],
         "summary": "Get an anonymous access token.",
-        "description": "This endpoint is public: no `access-token` header is required. The returned token must be sent as the `access-token` header on every other request. Tokens are kept in memory and are lost when the API restarts.",
+        "description": "This endpoint is public: no `access-token` header is required. The returned token must be sent as the `access-token` header on every other request. The token is a signed JWT that expires after 24 hours: on a `401`, get a new one.",
         "operationId": "getAnonymousToken",
         "responses": {
           "202": {
@@ -64,7 +64,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "description": "Request body for `POST /v0/itinerary`.",
+                "description": "Request body for `POST /v0/itinerary`, and query string for `GET /v0/itinerary` (same snake_case names).",
                 "$ref": "#/components/schemas/CreateItineraryRequest"
               }
             }
@@ -84,6 +84,148 @@
           },
           "400": {
             "description": "The request body is invalid, or an address cannot be found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Error body returned for client errors (400 and 422), with a readable message.",
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The access-token header is missing or invalid."
+          },
+          "422": {
+            "description": "A point is outside the area covered by the map, or no route matches the mobility profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Error body returned for client errors (400 and 422), with a readable message.",
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Error body returned for 500 Internal Server Error responses.",
+                  "$ref": "#/components/schemas/ServerErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "accessToken": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Itinerary"
+        ],
+        "summary": "Compute an itinerary between two points, with the parameters in the query string.",
+        "description": "Same computation as `POST /v0/itinerary`, for clients that can only send a GET\n(shareable link, simple fetch). The query parameters use the same names and formats as\nthe POST body fields. Requires the `access-token` header (see `GET /v0/auth/anonymous`).",
+        "operationId": "getItinerary",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "description": "The starting point: either coordinates as `\"lat,lng\"` with `.` as the decimal separator, or a free-text address geocoded through Nominatim.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "48.8566,2.3522"
+            },
+            "example": "48.8566,2.3522"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "description": "The destination point, in the same formats as `start`.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "48.8606,2.3376"
+            },
+            "example": "48.8606,2.3376"
+          },
+          {
+            "name": "mobility_profile",
+            "in": "query",
+            "description": "The user's mobility profile. Conditions the relevance of the other fields.",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/MobilityProfile"
+            },
+            "example": 0
+          },
+          {
+            "name": "wheelchair_width",
+            "in": "query",
+            "description": "Wheelchair width in meters. Applies to the Wheelchair profile. The returned path is guaranteed to be wider than this value.",
+            "schema": {
+              "maximum": 2,
+              "exclusiveMinimum": 0,
+              "type": "number",
+              "format": "double",
+              "example": 0.7
+            },
+            "example": 0.7
+          },
+          {
+            "name": "physical_strength",
+            "in": "query",
+            "description": "Physical strength of a wheelchair user. Applies to the Wheelchair profile. Determines tolerance to slopes and slightly raised curbs.",
+            "schema": {
+              "$ref": "#/components/schemas/PhysicalStrength"
+            }
+          },
+          {
+            "name": "is_accompanied",
+            "in": "query",
+            "description": "Whether the user is accompanied. Applies to the Wheelchair and Blind profiles. Wheelchair: allows gentle slopes even without physical strength. Blind: if not accompanied, a tactile paving path becomes mandatory.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "can_climb_stairs",
+            "in": "query",
+            "description": "Whether a person on crutches can climb stairs. Applies to the Crutches profile. true: stairs are acceptable (but not too many/too high). false: no stairs, no raised curbs.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "path_preferences",
+            "in": "query",
+            "description": "Route preferences for an able-bodied pedestrian. Applies to the Pedestrian profile. Example: `LitStreets | Benches` = 24.",
+            "schema": {
+              "$ref": "#/components/schemas/PathPreference"
+            },
+            "example": 24
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The itinerary was computed successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Response body for `POST /v0/itinerary`.",
+                  "$ref": "#/components/schemas/ItineraryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A query parameter is missing or invalid, or an address cannot be found.",
             "content": {
               "application/json": {
                 "schema": {
@@ -260,7 +402,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "Request body for `POST /v0/itinerary`."
+        "description": "Request body for `POST /v0/itinerary`, and query string for `GET /v0/itinerary` (same snake_case names)."
       },
       "DimensionRangeResponse": {
         "required": [
@@ -406,7 +548,7 @@
         "properties": {
           "accessToken": {
             "type": "string",
-            "description": "The anonymous access token. Send it as the `access-token` header on every other request."
+            "description": "The access token (JWT). Send it as the `access-token` header on every other request."
           }
         },
         "additionalProperties": false,
@@ -513,7 +655,7 @@
     "securitySchemes": {
       "accessToken": {
         "type": "apiKey",
-        "description": "Anonymous access token obtained from GET /v0/auth/anonymous. Send it as the access-token header on every other request.",
+        "description": "Access token (JWT) obtained from GET /v0/auth/anonymous. Send it as the access-token header on every other request.",
         "name": "access-token",
         "in": "header"
       }

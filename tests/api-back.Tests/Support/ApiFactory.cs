@@ -18,6 +18,7 @@ public class ApiFactory : WebApplicationFactory<Program>
 {
     public string? GraphHopperBaseUrl { get; set; }
     public string? NominatimBaseUrl { get; set; }
+    public string? JwtSigningKey { get; set; }
 
     public InMemoryErrorLogRepository ErrorLogRepository { get; } = new();
 
@@ -35,6 +36,11 @@ public class ApiFactory : WebApplicationFactory<Program>
             if (NominatimBaseUrl is not null)
             {
                 overrides["Nominatim:BaseUrl"] = NominatimBaseUrl;
+            }
+
+            if (JwtSigningKey is not null)
+            {
+                overrides["Jwt:SigningKey"] = JwtSigningKey;
             }
 
             config.AddInMemoryCollection(overrides);
