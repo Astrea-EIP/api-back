@@ -9,7 +9,8 @@ This page is for the web and mobile developers who build the sign-up, sign-in an
 profile screens. It explains the contract in `docs/contracts/accounts.openapi.yaml`, agreed
 **before** the implementation so the apps can plug in their screens now.
 
-- Status: proposed, to be validated by the web and mobile developers in the pull request.
+- Status: agreed with the web and mobile developers (#114). `POST /v0/auth/register` and
+  `POST /v0/auth/login` are implemented (#110) and generated in `docs/api.json`.
 - Implemented by #110 (register, login), #50 (user token), #46 (profile model) and #111
   (`/v0/users/me`).
 - When an endpoint is implemented, it appears in `docs/api.json` like every other endpoint.
