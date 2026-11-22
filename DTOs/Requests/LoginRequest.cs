@@ -13,7 +13,7 @@ public class LoginRequest
     public string Email { get; set; } = null!;
 
     /// <summary>Password of the account.</summary>
-    /// <example>correct-horse-battery</example>
+    /// <example>correct-horse-battery-9</example>
     [Required]
     [JsonPropertyName("password")]
     public string Password { get; set; } = null!;

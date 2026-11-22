@@ -22,10 +22,11 @@ public class RegisterRequest
     [JsonPropertyName("email")]
     public string Email { get; set; } = null!;
 
-    /// <summary>At least 8 characters. Stored as a hash, never in clear text.</summary>
-    /// <example>correct-horse-battery</example>
+    /// <summary>At least 8 characters, with at least one letter and one digit (same rule as the web and mobile apps). Stored as a hash, never in clear text.</summary>
+    /// <example>correct-horse-battery-9</example>
     [Required]
     [StringLength(128, MinimumLength = 8)]
+    [PasswordStrength]
     [JsonPropertyName("password")]
     public string Password { get; set; } = null!;
 
