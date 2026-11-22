@@ -78,8 +78,9 @@ GraphHopper and Nominatim URLs come from configuration (`GraphHopper:BaseUrl`,
   `Support/ApiFactory.cs` (a `WebApplicationFactory<Program>`) so each end-to-end test
   gets an isolated app instance with its own stubs.
 - `Support/ApiFactory.cs` also replaces `IErrorLogRepository` with
-  `Support/InMemoryErrorLogRepository.cs` and `IUserRepository` with
-  `Support/InMemoryUserRepository.cs`, so the placeholder MongoDB connection string
+  `Support/InMemoryErrorLogRepository.cs`, `IUserRepository` with
+  `Support/InMemoryUserRepository.cs` and `IUserProfileRepository` with
+  `Support/InMemoryUserProfileRepository.cs`, so the placeholder MongoDB connection string
   in `appsettings.json` is never touched outside the `Database` category.
 
 ## Adding a test
