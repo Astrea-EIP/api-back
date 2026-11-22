@@ -45,8 +45,8 @@ user token in the same `{ "accessToken": "<JWT>" }` shape. It is sent in the sam
 | Method | Path | Purpose | Status codes |
 |---|---|---|---|
 | `GET` | `/v0/auth/anonymous` | Get an anonymous access token | `202`, `400`, `500` |
-| `POST` | `/v0/auth/register` | Create an account and sign in | `201`, `400`, `409`, `500` |
-| `POST` | `/v0/auth/login` | Sign in | `200`, `400`, `401`, `500` |
+| `POST` | `/v0/auth/register` | Create an account and sign in | `201`, `400`, `409`, `429`, `500` |
+| `POST` | `/v0/auth/login` | Sign in | `200`, `400`, `401`, `429`, `500` |
 | `POST` | `/v0/itinerary` | Compute an itinerary | `201`, `400`, `401`, `422`, `500` |
 | `GET` | `/v0/itinerary` | Compute an itinerary, parameters in the query string | `200`, `400`, `401`, `422`, `500` |
 | `GET` | `/v0/wheelchairs` | List the standard wheelchairs and accessibility reference values | `200`, `401`, `500` |
@@ -102,6 +102,9 @@ All dimensions are in **metres**, like `wheelchair_width`. Send the chosen model
 
 - `400` — `{ "error": "<message>" }`: invalid request body, or an address that cannot be found.
 - `401` — no body
+- `429` — `{ "error": "<message>" }` and a `Retry-After` header (seconds): too many sign-ins or
+  sign-ups from the same IP address, or too many failed sign-ins for the same email address.
+  Wait for `Retry-After` seconds before trying again; do not retry automatically in a loop.
 - `422` — `{ "error": "<message>" }`: a point is outside the area covered by the map (or too
   far from any path), or no route matches the mobility profile. The message is written for
   the end user (in French) and can be shown as is.

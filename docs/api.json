@@ -103,6 +103,17 @@
               }
             }
           },
+          "429": {
+            "description": "Too many sign-ups from this IP address. Wait for the number of seconds in the `Retry-After` header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Error body returned for client errors (400 and 422), with a readable message.",
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "An unexpected error occurred.",
             "content": {
@@ -160,6 +171,17 @@
           },
           "401": {
             "description": "The email address or the password is wrong. The message does not say which one, so that it cannot be used to find out whether an email address has an account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Error body returned for client errors (400 and 422), with a readable message.",
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many sign-ins from this IP address, or too many failed sign-ins for this email address. Wait for the number of seconds in the `Retry-After` header.",
             "content": {
               "application/json": {
                 "schema": {

@@ -65,6 +65,10 @@ docker compose --profile api down
 | `MongoDb__DatabaseName` | MongoDB database name | `astrea_proto` | `astrea_proto` |
 | `Jwt__SigningKey` | Secret that signs the access tokens, at least 32 characters. Keep it secret and stable: changing it invalidates every token | not set — a random key is used and tokens stop working when the API restarts | any random string of 32+ characters |
 | `GraphHopper__BaseUrl` | GraphHopper base URL, required for `/v0/itinerary` | not set — itinerary requests fail until provided | `http://host.docker.internal:8989` |
+| `AuthRateLimit__LoginPermitLimit` / `AuthRateLimit__LoginWindowSeconds` | Sign-ins allowed per client IP address per window, then `429` | `5` per `60` s | defaults |
+| `AuthRateLimit__RegisterPermitLimit` / `AuthRateLimit__RegisterWindowSeconds` | Sign-ups allowed per client IP address per window, then `429` | `10` per `3600` s | defaults |
+| `AuthRateLimit__FailedLoginsPerEmail` / `AuthRateLimit__FailedLoginWindowSeconds` | Failed sign-ins allowed for one email address (any IP) before it is blocked until the window ends | `10` per `900` s | defaults |
+| `AuthRateLimit__TrustedProxies__0`, `__1`… | IP addresses of the reverse proxies allowed to set `X-Forwarded-For`. Leave empty when the API is reached directly; set it to the proxy's address behind Caddy, otherwise every user shares the proxy's limit | empty | not needed |
 | `Nominatim__BaseUrl` | Nominatim geocoding base URL | `https://nominatim.openstreetmap.org` | `https://nominatim.openstreetmap.org` |
 
 GraphHopper and Nominatim come from `core-moteur`'s own `docker-compose.yml` (ports
