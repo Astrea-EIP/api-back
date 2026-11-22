@@ -6,15 +6,14 @@ sidebar_position: 5
 # Accounts contract
 
 This page is for the web and mobile developers who build the sign-up, sign-in and mobility
-profile screens. It explains the contract in `docs/contracts/accounts.openapi.yaml`, agreed
-**before** the implementation so the apps can plug in their screens now.
+profile screens. It explains the accounts contract, agreed with the web and mobile developers
+(#114) **before** the implementation.
 
-- Status: proposed, to be validated by the web and mobile developers in the pull request.
-- Implemented by #110 (register, login), #50 (user token), #46 (profile model) and #111
-  (`/v0/users/me`).
-- When an endpoint is implemented, it appears in `docs/api.json` like every other endpoint.
-  Once all of them are there, `accounts.openapi.yaml` is removed: `docs/api.json` stays the
-  only source of truth.
+- Status: implemented by #110 (register, login), #50 (user token), #46 (profile model) and
+  #111 (`/v0/users/me`).
+- The exact schema of every route is in `docs/api.json`, generated from the code like every
+  other endpoint. The draft `docs/contracts/accounts.openapi.yaml` was removed once all the
+  routes were there: `docs/api.json` is the only source of truth.
 
 ## Endpoints
 
@@ -57,7 +56,8 @@ profile screens. It explains the contract in `docs/contracts/accounts.openapi.ya
   API ignores the fields that do not apply to the chosen `mobility_profile`.
 - **Wheelchair width.** The apps build the model list from `GET /v0/wheelchairs` and send the
   chosen model's `id` as `wheelchair_model_id` and its `recommended_wheelchair_width` as
-  `wheelchair_width`. Widths are in metres.
+  `wheelchair_width`. Widths are in metres. An unknown `wheelchair_model_id` is refused with a
+  `400`; when only the model is sent, the API stores its `recommended_wheelchair_width`.
 - **App choice.** `app_profile` is a free value the API stores and returns without using it, so
   an app can restore its own form when several of its choices share the same `mobility_profile`
   (for example `stroller` and `pedestrian` are both `0`).
