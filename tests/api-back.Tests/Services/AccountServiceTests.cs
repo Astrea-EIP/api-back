@@ -29,7 +29,7 @@ public class AccountServiceTests
     {
         Name = "  Camille ",
         Email = email,
-        Password = "correct-horse-battery",
+        Password = "correct-horse-battery-9",
         BirthDate = new DateOnly(1998, 4, 12)
     };
 
@@ -52,10 +52,10 @@ public class AccountServiceTests
         await _service.RegisterAsync(NewRegisterRequest());
 
         var user = Assert.Single(_users.Users);
-        Assert.DoesNotContain("correct-horse-battery", user.PasswordHash);
+        Assert.DoesNotContain("correct-horse-battery-9", user.PasswordHash);
         Assert.Equal(
             PasswordVerificationResult.Success,
-            new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, "correct-horse-battery"));
+            new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, "correct-horse-battery-9"));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class AccountServiceTests
         await _service.RegisterAsync(NewRegisterRequest());
         var user = Assert.Single(_users.Users);
 
-        var token = await _service.LoginAsync(new LoginRequest { Email = " CAMILLE@example.com", Password = "correct-horse-battery" });
+        var token = await _service.LoginAsync(new LoginRequest { Email = " CAMILLE@example.com", Password = "correct-horse-battery-9" });
 
         Assert.Equal("token-for-" + user.Id, token);
     }
@@ -100,7 +100,7 @@ public class AccountServiceTests
             () => _service.LoginAsync(new LoginRequest { Email = "camille@example.com", Password = "wrong-password" }));
 
         var unknownEmail = await Assert.ThrowsAsync<InvalidCredentialsException>(
-            () => _service.LoginAsync(new LoginRequest { Email = "nobody@example.com", Password = "correct-horse-battery" }));
+            () => _service.LoginAsync(new LoginRequest { Email = "nobody@example.com", Password = "correct-horse-battery-9" }));
 
         Assert.Equal(wrongPassword.StatusCode, unknownEmail.StatusCode);
         Assert.Equal(wrongPassword.Message, unknownEmail.Message);
