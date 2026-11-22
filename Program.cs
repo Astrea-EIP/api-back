@@ -95,6 +95,7 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"))
 builder.Services.AddSingleton<IAuthService, AuthService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>((sp, client) =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
