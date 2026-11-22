@@ -26,7 +26,7 @@ public class UsersEndToEndTests
         {
             name = "Camille",
             email,
-            password = "correct-horse-battery",
+            password = "correct-horse-battery-9",
             birth_date = "1998-04-12"
         });
         response.EnsureSuccessStatusCode();
@@ -140,7 +140,7 @@ public class UsersEndToEndTests
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Empty(ctx.Factory.UserRepository.Users);
         Assert.Empty(ctx.Factory.UserProfileRepository.Profiles);
-        var login = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = "camille@example.com", password = "correct-horse-battery" });
+        var login = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = "camille@example.com", password = "correct-horse-battery-9" });
         Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
     }
 
