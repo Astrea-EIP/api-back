@@ -20,7 +20,7 @@ public class AccountsEndToEndTests
     {
         name = "Camille",
         email,
-        password = "correct-horse-battery",
+        password = "correct-horse-battery-9",
         birth_date = "1998-04-12"
     };
 
@@ -90,6 +90,25 @@ public class AccountsEndToEndTests
         Assert.Single(ctx.Factory.UserRepository.Users);
     }
 
+    [Theory]
+    [InlineData("motdepasse1")]
+    [InlineData("élève2026")]
+    [InlineData("12345678a")]
+    public async Task Register_PasswordWithALetterAndADigit_IsAccepted(string password)
+    {
+        using var ctx = ApiTestContext.Create();
+
+        var response = await ctx.Client.PostAsJsonAsync("/v0/auth/register", new
+        {
+            name = "Camille",
+            email = "camille@example.com",
+            password,
+            birth_date = "1998-04-12"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
     [Fact]
     public async Task Register_ConsentSentByAnOlderApp_IsIgnored()
     {
@@ -99,7 +118,7 @@ public class AccountsEndToEndTests
         {
             name = "Camille",
             email = "camille@example.com",
-            password = "correct-horse-battery",
+            password = "correct-horse-battery-9",
             birth_date = "1998-04-12",
             consent = true
         });
@@ -109,16 +128,18 @@ public class AccountsEndToEndTests
 
     public static IEnumerable<object[]> InvalidRegisterBodies()
     {
-        yield return new object[] { "missing name", """{"email":"a@example.com","password":"correct-horse-battery","birth_date":"1998-04-12"}""" };
-        yield return new object[] { "empty name", """{"name":"","email":"a@example.com","password":"correct-horse-battery","birth_date":"1998-04-12"}""" };
-        yield return new object[] { "name too long", $$"""{"name":"{{new string('a', 81)}}","email":"a@example.com","password":"correct-horse-battery","birth_date":"1998-04-12"}""" };
-        yield return new object[] { "missing email", """{"name":"Camille","password":"correct-horse-battery","birth_date":"1998-04-12"}""" };
-        yield return new object[] { "invalid email", """{"name":"Camille","email":"not-an-email","password":"correct-horse-battery","birth_date":"1998-04-12"}""" };
+        yield return new object[] { "missing name", """{"email":"a@example.com","password":"correct-horse-battery-9","birth_date":"1998-04-12"}""" };
+        yield return new object[] { "empty name", """{"name":"","email":"a@example.com","password":"correct-horse-battery-9","birth_date":"1998-04-12"}""" };
+        yield return new object[] { "name too long", $$"""{"name":"{{new string('a', 81)}}","email":"a@example.com","password":"correct-horse-battery-9","birth_date":"1998-04-12"}""" };
+        yield return new object[] { "missing email", """{"name":"Camille","password":"correct-horse-battery-9","birth_date":"1998-04-12"}""" };
+        yield return new object[] { "invalid email", """{"name":"Camille","email":"not-an-email","password":"correct-horse-battery-9","birth_date":"1998-04-12"}""" };
         yield return new object[] { "missing password", """{"name":"Camille","email":"a@example.com","birth_date":"1998-04-12"}""" };
         yield return new object[] { "password too short", """{"name":"Camille","email":"a@example.com","password":"short","birth_date":"1998-04-12"}""" };
-        yield return new object[] { "missing birth_date", """{"name":"Camille","email":"a@example.com","password":"correct-horse-battery"}""" };
-        yield return new object[] { "birth_date in the future", """{"name":"Camille","email":"a@example.com","password":"correct-horse-battery","birth_date":"2999-01-01"}""" };
-        yield return new object[] { "birth_date not a date", """{"name":"Camille","email":"a@example.com","password":"correct-horse-battery","birth_date":"12/04/1998"}""" };
+        yield return new object[] { "password without digit", """{"name":"Camille","email":"a@example.com","password":"only-letters-here","birth_date":"1998-04-12"}""" };
+        yield return new object[] { "password without letter", """{"name":"Camille","email":"a@example.com","password":"12345678-90","birth_date":"1998-04-12"}""" };
+        yield return new object[] { "missing birth_date", """{"name":"Camille","email":"a@example.com","password":"correct-horse-battery-9"}""" };
+        yield return new object[] { "birth_date in the future", """{"name":"Camille","email":"a@example.com","password":"correct-horse-battery-9","birth_date":"2999-01-01"}""" };
+        yield return new object[] { "birth_date not a date", """{"name":"Camille","email":"a@example.com","password":"correct-horse-battery-9","birth_date":"12/04/1998"}""" };
         yield return new object[] { "malformed json", "{this is not json" };
     }
 
@@ -143,7 +164,7 @@ public class AccountsEndToEndTests
         await ctx.Client.PostAsJsonAsync("/v0/auth/register", NewAccount());
         var user = Assert.Single(ctx.Factory.UserRepository.Users);
 
-        var response = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = "CAMILLE@example.com", password = "correct-horse-battery" });
+        var response = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = "CAMILLE@example.com", password = "correct-horse-battery-9" });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var token = await ReadTokenAsync(response);
@@ -158,7 +179,7 @@ public class AccountsEndToEndTests
         await ctx.Client.PostAsJsonAsync("/v0/auth/register", NewAccount());
 
         var wrongPassword = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = "camille@example.com", password = "wrong-password" });
-        var unknownEmail = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = "nobody@example.com", password = "correct-horse-battery" });
+        var unknownEmail = await ctx.Client.PostAsJsonAsync("/v0/auth/login", new { email = "nobody@example.com", password = "correct-horse-battery-9" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, wrongPassword.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, unknownEmail.StatusCode);
@@ -166,7 +187,7 @@ public class AccountsEndToEndTests
     }
 
     [Theory]
-    [InlineData("""{"password":"correct-horse-battery"}""")]
+    [InlineData("""{"password":"correct-horse-battery-9"}""")]
     [InlineData("""{"email":"camille@example.com"}""")]
     [InlineData("{this is not json")]
     public async Task Login_InvalidBody_Returns400(string json)
