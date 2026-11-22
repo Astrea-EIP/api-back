@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
 using proto_back.Interfaces.IRepositories;
 using proto_back.Models.Entities;
@@ -34,6 +35,29 @@ public class UserRepository : IUserRepository
     {
         await EnsureIndexesAsync();
         return await _collection.Find(u => u.Email == email).FirstOrDefaultAsync();
+    }
+
+    public async Task<User?> GetByIdAsync(string id)
+    {
+        if (!ObjectId.TryParse(id, out _))
+        {
+            return null;
+        }
+
+        await EnsureIndexesAsync();
+        return await _collection.Find(u => u.Id == id).FirstOrDefaultAsync();
+    }
+
+    public async Task<bool> DeleteAsync(string id)
+    {
+        if (!ObjectId.TryParse(id, out _))
+        {
+            return false;
+        }
+
+        await EnsureIndexesAsync();
+        var result = await _collection.DeleteOneAsync(u => u.Id == id);
+        return result.DeletedCount > 0;
     }
 
     private Task EnsureIndexesAsync() => MongoIndexes.EnsureAsync(
