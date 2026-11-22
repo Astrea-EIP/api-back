@@ -82,6 +82,7 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 
 // Register repositories
 builder.Services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
+builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 
 // Access tokens (JWT)
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
