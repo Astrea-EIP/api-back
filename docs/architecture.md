@@ -42,3 +42,19 @@ path preferences. They are still accepted and validated by the API.
 
 The engine only uses this JSON from the release that includes core-moteur PR #23
 (profile personalisation). Earlier engine versions ignore it.
+
+## Stored data
+
+| Collection | Entity | Indexes | Notes |
+| --- | --- | --- | --- |
+| `error_logs` | `ErrorLog` | none | One entry per unexpected error, found with the `errorId` returned by a `500`. |
+| `user_profiles` | `UserProfile` | `userId`, unique | One mobility profile per account. Health data (GDPR): saved only with the consent, deleted with the account or when the consent is withdrawn. |
+
+`UserProfile` uses the fields of `POST /v0/itinerary`, so a saved profile can be sent as an
+itinerary request as is. `UserProfileRepository.SaveAsync` creates or replaces the profile in a
+single operation: `createdAt` and `consentGivenAt` keep their first values, and the optional
+fields left empty are removed from the document instead of being stored as `null`.
+
+Repositories create their indexes the first time a collection is used (`MongoIndexes`), not at
+startup, so the API and the tests that replace the repositories never connect to MongoDB for
+nothing.
