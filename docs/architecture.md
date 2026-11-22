@@ -48,6 +48,7 @@ The engine only uses this JSON from the release that includes core-moteur PR #23
 | Collection | Entity | Indexes | Notes |
 | --- | --- | --- | --- |
 | `error_logs` | `ErrorLog` | none | One entry per unexpected error, found with the `errorId` returned by a `500`. |
+| `users` | `User` | `email`, unique | One document per account. The email address is stored trimmed and in lower case; the password only as a hash (`passwordHash`, ASP.NET Core Identity PBKDF2 format). |
 | `user_profiles` | `UserProfile` | `userId`, unique | One mobility profile per account. Health data (GDPR): saved only with the consent, deleted with the account or when the consent is withdrawn. |
 
 `UserProfile` uses the fields of `POST /v0/itinerary`, so a saved profile can be sent as an

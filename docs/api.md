@@ -20,10 +20,11 @@ This page is for frontend developers consuming `api-back`.
   `Development`. Lets you try requests directly from the browser, including
   authorizing with a token.
 
-## Coming next: accounts
+## Accounts
 
-User accounts, sign-in and the saved mobility profile are not implemented yet. Their contract is
-agreed in advance in `docs/contracts/accounts.openapi.yaml`, explained in
+Sign-up (`POST /v0/auth/register`) and sign-in (`POST /v0/auth/login`) are implemented. The
+`/v0/users/me` routes (account and saved mobility profile) are not implemented yet: their
+contract is agreed in advance in `docs/contracts/accounts.openapi.yaml`, explained in
 `docs/contracts/accounts.md`, so the apps can build their screens now.
 
 ## Auth flow
@@ -34,11 +35,18 @@ agreed in advance in `docs/contracts/accounts.openapi.yaml`, explained in
    as `Jwt__SigningKey` is set (see `docs/setup.md`). If a request gets a `401`, fetch a new
    token and retry the request once before giving up.
 
+With an account, `POST /v0/auth/register` (`201`) or `POST /v0/auth/login` (`200`) returns a
+user token in the same `{ "accessToken": "<JWT>" }` shape. It is sent in the same
+`access-token` header, works on every route the anonymous token works on, and expires after
+7 days: on a `401`, sign in again.
+
 ## Endpoints
 
 | Method | Path | Purpose | Status codes |
 |---|---|---|---|
 | `GET` | `/v0/auth/anonymous` | Get an anonymous access token | `202`, `400`, `500` |
+| `POST` | `/v0/auth/register` | Create an account and sign in | `201`, `400`, `409`, `500` |
+| `POST` | `/v0/auth/login` | Sign in | `200`, `400`, `401`, `500` |
 | `POST` | `/v0/itinerary` | Compute an itinerary | `201`, `400`, `401`, `422`, `500` |
 | `GET` | `/v0/itinerary` | Compute an itinerary, parameters in the query string | `200`, `400`, `401`, `422`, `500` |
 | `GET` | `/v0/wheelchairs` | List the standard wheelchairs and accessibility reference values | `200`, `401`, `500` |
