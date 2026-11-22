@@ -25,4 +25,15 @@ public class InMemoryUserRepository : IUserRepository
     {
         return Task.FromResult(_usersByEmail.TryGetValue(email, out var user) ? user : null);
     }
+
+    public Task<User?> GetByIdAsync(string id)
+    {
+        return Task.FromResult(_usersByEmail.Values.FirstOrDefault(u => u.Id == id));
+    }
+
+    public Task<bool> DeleteAsync(string id)
+    {
+        var user = _usersByEmail.Values.FirstOrDefault(u => u.Id == id);
+        return Task.FromResult(user is not null && _usersByEmail.TryRemove(user.Email, out _));
+    }
 }
