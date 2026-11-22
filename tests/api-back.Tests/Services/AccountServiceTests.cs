@@ -17,12 +17,13 @@ public class AccountServiceTests
 
     private readonly InMemoryUserRepository _users = new();
     private readonly Mock<IAuthService> _authService = new();
+    private readonly Mock<ILoginAttemptTracker> _loginAttempts = new();
     private readonly AccountService _service;
 
     public AccountServiceTests()
     {
         _authService.Setup(a => a.GenerateUserToken(It.IsAny<string>())).Returns<string>(id => "token-for-" + id);
-        _service = new AccountService(_users, _authService.Object, new PasswordHasher<User>(), new FakeTimeProvider(Now));
+        _service = new AccountService(_users, _authService.Object, new PasswordHasher<User>(), _loginAttempts.Object, new FakeTimeProvider(Now));
     }
 
     private static RegisterRequest NewRegisterRequest(string email = "Camille@Example.com ") => new()
@@ -111,11 +112,52 @@ public class AccountServiceTests
     {
         var hasher = new Mock<IPasswordHasher<User>>();
         hasher.Setup(h => h.HashPassword(It.IsAny<User>(), It.IsAny<string>())).Returns("dummy-hash");
-        var service = new AccountService(_users, _authService.Object, hasher.Object);
+        var service = new AccountService(_users, _authService.Object, hasher.Object, _loginAttempts.Object);
 
         await Assert.ThrowsAsync<InvalidCredentialsException>(
             () => service.LoginAsync(new LoginRequest { Email = "nobody@example.com", Password = "whatever-password" }));
 
         hasher.Verify(h => h.VerifyHashedPassword(It.IsAny<User>(), "dummy-hash", "whatever-password"), Times.Once);
+    }
+
+    [Fact]
+    public async Task LoginAsync_BlockedEmail_ThrowsTooManyRequestsEvenWithTheRightPassword()
+    {
+        await _service.RegisterAsync(NewRegisterRequest());
+        _authService.Invocations.Clear();
+        var retryAfter = TimeSpan.FromSeconds(42);
+        _loginAttempts.Setup(l => l.IsBlocked("camille@example.com", out retryAfter)).Returns(true);
+
+        var ex = await Assert.ThrowsAsync<TooManyRequestsException>(
+            () => _service.LoginAsync(new LoginRequest { Email = "Camille@example.com", Password = "correct-horse-battery-9" }));
+
+        Assert.Equal(429, ex.StatusCode);
+        Assert.Equal(42, ex.RetryAfterSeconds);
+        _authService.Verify(a => a.GenerateUserToken(It.IsAny<string>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("camille@example.com", "wrong-password")]
+    [InlineData("nobody@example.com", "correct-horse-battery-9")]
+    public async Task LoginAsync_Failure_IsRecordedForTheNormalizedEmail(string email, string password)
+    {
+        await _service.RegisterAsync(NewRegisterRequest());
+
+        await Assert.ThrowsAsync<InvalidCredentialsException>(
+            () => _service.LoginAsync(new LoginRequest { Email = " " + email.ToUpperInvariant(), Password = password }));
+
+        _loginAttempts.Verify(l => l.RecordFailure(email), Times.Once);
+        _loginAttempts.Verify(l => l.Reset(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LoginAsync_Success_ResetsTheFailuresOfTheEmail()
+    {
+        await _service.RegisterAsync(NewRegisterRequest());
+
+        await _service.LoginAsync(new LoginRequest { Email = "camille@example.com", Password = "correct-horse-battery-9" });
+
+        _loginAttempts.Verify(l => l.Reset("camille@example.com"), Times.Once);
+        _loginAttempts.Verify(l => l.RecordFailure(It.IsAny<string>()), Times.Never);
     }
 }
