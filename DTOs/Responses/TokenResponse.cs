@@ -1,7 +1,8 @@
 namespace proto_back.DTOs.Responses;
 
 /// <summary>
-/// Response body for <c>GET /v0/auth/anonymous</c>.
+/// Response body for <c>GET /v0/auth/anonymous</c>, <c>POST /v0/auth/register</c> and
+/// <c>POST /v0/auth/login</c>. The expiry is in the <c>exp</c> claim of the token.
 /// </summary>
 public class TokenResponse
 {

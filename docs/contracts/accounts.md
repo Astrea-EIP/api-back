@@ -9,7 +9,8 @@ This page is for the web and mobile developers who build the sign-up, sign-in an
 profile screens. It explains the contract in `docs/contracts/accounts.openapi.yaml`, agreed
 **before** the implementation so the apps can plug in their screens now.
 
-- Status: proposed, to be validated by the web and mobile developers in the pull request.
+- Status: agreed with the web and mobile developers (#114). `POST /v0/auth/register` and
+  `POST /v0/auth/login` are implemented (#110) and generated in `docs/api.json`.
 - Implemented by #110 (register, login), #50 (user token), #46 (profile model) and #111
   (`/v0/users/me`).
 - When an endpoint is implemented, it appears in `docs/api.json` like every other endpoint.
@@ -61,6 +62,9 @@ profile screens. It explains the contract in `docs/contracts/accounts.openapi.ya
 - **App choice.** `app_profile` is a free value the API stores and returns without using it, so
   an app can restore its own form when several of its choices share the same `mobility_profile`
   (for example `stroller` and `pedestrian` are both `0`).
+- **Password rule.** At least 8 characters (128 at most), with at least one letter (any
+  alphabet, accents included) and one digit from 0 to 9. The web and mobile apps check the same
+  rule before sending; the API refuses anything else with a `400`.
 - **Login errors.** A wrong email and a wrong password both give the same `401` message, so the
   endpoint cannot be used to find out whether an email address has an account.
 
