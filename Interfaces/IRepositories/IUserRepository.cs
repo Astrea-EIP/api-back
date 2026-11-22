@@ -12,4 +12,10 @@ public interface IUserRepository
 
     /// <summary>Returns the account with this email address (already in lower case), or <c>null</c>.</summary>
     Task<User?> GetByEmailAsync(string email);
+
+    /// <summary>Returns the account with this id, or <c>null</c> (also for an id that is not an ObjectId).</summary>
+    Task<User?> GetByIdAsync(string id);
+
+    /// <summary>Deletes the account. Returns <c>false</c> if there was none.</summary>
+    Task<bool> DeleteAsync(string id);
 }
