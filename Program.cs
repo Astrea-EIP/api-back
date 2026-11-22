@@ -9,6 +9,7 @@ using proto_back.Middlewares;
 using proto_back.Models.Entities;
 using proto_back.Repositories;
 using proto_back.Services;
+using proto_back.Shared.Auth;
 using proto_back.Shared.OpenApi;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -95,6 +96,8 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"))
 builder.Services.AddSingleton<IAuthService, AuthService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddSingleton<ILoginAttemptTracker, LoginAttemptTracker>();
+builder.Services.AddAuthRateLimiting(builder.Configuration);
 builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>((sp, client) =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
@@ -121,6 +124,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("LocalWeb");
+
+// Limits on sign-in and sign-up per client IP address (429 above the limit).
+app.UseAuthRateLimiting();
 
 // Custom middleware: validate access-token header on protected routes
 app.UseMiddleware<AccessTokenMiddleware>();
